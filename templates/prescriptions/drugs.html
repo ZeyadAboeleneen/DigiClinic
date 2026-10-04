@@ -47,7 +47,7 @@
       {% for d in drugs %}
       <tr class="{% if not d.is_active %}text-stone-400{% endif %}">
         <td class="px-3 py-2 font-semibold" dir="ltr"><a href="{% url 'prescriptions:drug_edit' d.pk %}" class="hover:text-brand">{{ d.name }}</a></td>
-        <td class="px-3 py-2 text-stone-500" dir="ltr">{{ d.generic_name }}</td>
+        <td class="px-3 py-2 text-stone-500" dir="ltr">{{ d.generic_name|truncatechars:60 }}{% if d.manufacturer %}<div class="text-xs text-stone-400">{{ d.manufacturer }}</div>{% endif %}</td>
         <td class="px-3 py-2">{{ d.form }}</td>
         <td class="px-3 py-2 text-xs" dir="ltr">{% for c in d.categories.all %}<span class="me-1 inline-block rounded bg-stone-100 px-1.5 py-0.5 text-stone-600">{{ c.name }}</span>{% empty %}<span class="text-amber-600">—</span>{% endfor %}</td>
         <td class="px-3 py-2 text-xs text-stone-400">{{ d.usage_count }}×</td>

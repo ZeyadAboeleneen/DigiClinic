@@ -8,7 +8,7 @@
           onkeydown="if (event.key === 'ArrowDown') { this.nextElementSibling?.focus(); event.preventDefault(); } if (event.key === 'ArrowUp') { (this.previousElementSibling?.matches('button') ? this.previousElementSibling : document.getElementById('rx-search')).focus(); event.preventDefault(); }">
     <span class="font-semibold" dir="ltr">{{ d.name }}</span>
     <span class="text-xs text-stone-500" dir="ltr">{{ d.generic_name }}</span>
-    <span class="ms-auto text-xs text-stone-400">{{ d.form }}</span>
+    <span class="ms-auto whitespace-nowrap text-xs text-stone-400">{{ d.form }}{% if d.manufacturer %} · <span dir="ltr">{{ d.manufacturer|truncatechars:22 }}</span>{% endif %}</span>
   </button>
   {% empty %}
   <p class="px-3 py-1.5 text-xs text-stone-500">

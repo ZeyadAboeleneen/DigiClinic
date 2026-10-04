@@ -313,3 +313,19 @@ gotchas and conventions introduced in that phase.
   full drug file later — names must match the preset names (new names are created).
 - HTMX gotcha fixed here: elements inside a form with `hx-swap="outerHTML"` inherit it — give inner hx-targets an
   explicit `hx-swap="innerHTML"` (the drug search box lost its results container after the first keystroke).
+
+## Egyptian drug database (added after the categories feature)
+- `apps/prescriptions/data/egyptian-drugs.csv` (+ README): 25,070 products registered in Egypt, June 2026, **CC0**
+  (github.com/karem505/egyptian-drug-database). `manage.py import_egyptian_drugs [--update] [--recategorize]`
+  (run by run.bat; idempotent; bulk): `source="eg-db"`, manufacturer, form guessed from the product name then the
+  route, the Arabic transliteration as an alias (Arabic search + voice), categories from `eg_classes.py`.
+  Drugs the clinic added (`source=""`) are never touched. Prices are not imported.
+- `eg_classes.py`: keyword rules on the source `drug_class` (+ route refinements, + a few ingredient rules);
+  `"!WORD"` excludes. Audited by hand: the source labels are messy (apixaban filed under "ANTIPLATLET", antidotes
+  named after what they reverse, "SOMATOSTATIN" contains "STATIN"...) — `test_clinically_sensitive_mappings` pins the
+  fixes; after changing rules run `--recategorize`. ~17k of 25k products get a category; the rest are mostly
+  cosmetics/personal care (searchable under "الكل", ranked after medicines).
+- Voice matching at this scale (`matching.py`): a per-org cached index of the first 1–3 words of every name,
+  scored with rapidfuzz `cdist(..., fuzz.ratio, workers=-1)` (numpy dependency). ~0.2 s per dictated line on 25k
+  drugs; the index rebuilds when the catalog's count/max(updated_at) changes (~1.5 s).
+- Category search puts trade names starting with the text first, then generic/alias prefix matches.

@@ -53,13 +53,16 @@ class DoctorCategory(TenantScopedModel):
 
 
 class Drug(TenantScopedModel):
-    name = models.CharField(_("الاسم التجاري"), max_length=150)
-    generic_name = models.CharField(_("الاسم العلمي"), max_length=200, blank=True)
+    name = models.CharField(_("الاسم التجاري"), max_length=150, db_index=True)
+    generic_name = models.CharField(_("الاسم العلمي"), max_length=400, blank=True)
     form = models.CharField(_("الشكل"), max_length=20, blank=True)
     strength = models.CharField(_("التركيز"), max_length=50, blank=True)
     aliases_ar = models.JSONField(_("أسماء بالعربي"), default=list, blank=True)
     default_instructions = models.CharField(_("الجرعة الافتراضية"), max_length=200, blank=True)
     default_duration = models.CharField(_("المدة الافتراضية"), max_length=100, blank=True)
+    manufacturer = models.CharField(_("الشركة"), max_length=150, blank=True)
+    # "eg-db" = imported from the Egyptian drug database (apps/prescriptions/data/README.md); "" = added by the clinic.
+    source = models.CharField(max_length=20, blank=True, db_index=True)
     categories = models.ManyToManyField(DrugCategory, blank=True, related_name="drugs", verbose_name=_("التصنيفات"))
     usage_count = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
