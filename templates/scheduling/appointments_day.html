@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "المواعيد" %}{% endblock %}
+{% block content %}
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+  <h1 class="text-2xl font-bold">{% translate "المواعيد" %}</h1>
+  {% if can.appointment_book %}<a href="{% url 'scheduling:booking_home' %}" class="btn-primary">+ {% translate "حجز جديد" %}</a>{% endif %}
+</div>
+
+<div class="mb-4 flex items-center gap-3 text-sm">
+  <a href="?date={{ prev_day|date:'Y-m-d' }}" class="btn-ghost">←</a>
+  <span class="font-mono font-bold" dir="ltr">{{ day|date:"Y-m-d" }}</span>
+  <a href="?date={{ next_day|date:'Y-m-d' }}" class="btn-ghost">→</a>
+</div>
+
+<div class="card overflow-hidden">
+  <ul class="divide-y divide-stone-100">
+    {% for a in appointments %}
+    <li class="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
+      <span class="font-mono" dir="ltr">{{ a.start_at|date:"H:i" }}</span>
+      {% if a.queue_number %}<span class="badge bg-stone-100 text-stone-700">#{{ a.queue_number }}</span>{% endif %}
+      <span class="font-semibold">{{ a.patient.full_name }}</span>
+      <span class="text-stone-500">{{ a.visit_type.name_ar }}</span>
+      <span class="badge" style="background:{{ a.visit_type.color }}22;color:{{ a.visit_type.color }}">{{ a.get_status_display }}</span>
+      {% if a.is_overbooked %}<span class="badge bg-amber-50 text-amber-700">{% translate "استثنائي" %}</span>{% endif %}
+      <span class="ms-auto flex gap-2">
+        {% if a.status == "booked" and can.appointment_reschedule %}
+        <form method="post" action="{% url 'scheduling:appointment_confirm' a.pk %}"><input type="hidden" name="next" value="{{ day }}">{% csrf_token %}<button class="btn-ghost text-xs">{% translate "تأكيد" %}</button></form>
+        {% endif %}
+        {% if can.appointment_cancel %}
+        <form method="post" action="{% url 'scheduling:appointment_cancel' a.pk %}" onsubmit="return confirm('{% translate 'تلغي الحجز ده؟' %}')">{% csrf_token %}<button class="btn-ghost text-xs text-red-600">{% translate "إلغاء" %}</button></form>
+        {% endif %}
+      </span>
+    </li>
+    {% empty %}
+    <li class="px-4 py-10 text-center text-sm text-stone-500">{% translate "مفيش حجوزات اليوم ده." %}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

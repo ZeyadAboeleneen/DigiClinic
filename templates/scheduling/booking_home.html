@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "حجز جديد" %}{% endblock %}
+{% block content %}
+<h1 class="mb-6 text-2xl font-bold">{% translate "حجز جديد" %}</h1>
+
+<div class="relative">
+  <svg class="pointer-events-none absolute inset-y-0 start-3 my-auto size-5 text-stone-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" d="m21 21-4.3-4.3M17 10.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0z"/></svg>
+  <input id="q" type="search" name="q" autofocus autocomplete="off"
+         placeholder="{% translate '0100... أو اسم أو رقم ملف' %}"
+         hx-get="{% url 'scheduling:booking_search' %}" hx-target="#results" hx-swap="innerHTML"
+         hx-trigger="input changed delay:250ms, search"
+         class="w-full rounded-lg border border-stone-300 bg-white py-3 ps-10 pe-3 text-lg focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20">
+</div>
+
+<div id="results" class="mt-4"></div>
+{% endblock %}

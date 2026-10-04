@@ -11,6 +11,9 @@ ACTION_LABELS = {
     "delivery.queued": _("طلب إرسال"),
     "delivery.sent": _("اتبعت"),
     "delivery.failed": _("فشل الإرسال"),
+    "appointment.booked": _("حجز ميعاد"),
+    "appointment.cancelled": _("إلغاء حجز"),
+    "appointment.rescheduled": _("تأجيل حجز"),
     "patient.created": _("إضافة مريض"),
     "patient.edited": _("تعديل بيانات مريض"),
     "patient.allergy_added": _("إضافة حساسية"),
@@ -30,6 +33,7 @@ ACTION_LABELS = {
 }
 
 ACTION_GROUPS = {
+    "appointment": _("الحجوزات"),
     "patient": _("المرضى"),
     "delivery": _("الإرسال"),
     "auth": _("الدخول"),

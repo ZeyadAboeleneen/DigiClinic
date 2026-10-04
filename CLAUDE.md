@@ -91,3 +91,33 @@ gotchas and conventions introduced in that phase.
   deactivates the duplicate — appointments/visits/attachments move too once those apps exist).
 - `import_patients <xlsx> --org <slug>` (columns: الاسم، الموبايل، السن، النوع، ملاحظات — idempotent, matched by
   name+phone) and `seed_demo [--org] [--remove]` (30 fake patients, 3 sharing one phone number).
+
+## Scheduling notes (Phase 3)
+- `apps/scheduling`: `Appointment`, `AppointmentEvent`, `DayLedger` (one row per doctor+day; every write for that
+  day happens under `select_for_update()` on it — this is the only place conflicts/races are prevented).
+  `availability.Period.period_id` (`wp-<pk>`/`exc-<pk>`) is stored on `Appointment.period_key` instead of a
+  `WorkingPeriod` FK, since queue periods can come from a `ScheduleException` (custom/extra) that has no
+  `WorkingPeriod` row — the schema note in `02-database-schema.md` assumed every period is a `WorkingPeriod`; this
+  is the one locked-doc deviation so far, flagged here per CLAUDE.md's own rule.
+- `services.py` is the only way to touch an appointment: `free_slots`/`queue_availability` (read-only),
+  `book`/`reschedule`/`cancel`/`transition` (all `@transaction.atomic`, lock the `DayLedger` first).
+  `ALLOWED_TRANSITIONS` in `models.py` is the full state machine (12-booking-engine §6); anything else raises
+  `InvalidTransition`. Queue numbers are **never reused** — `DayLedger.queue_numbers` is `{period_id: last number}`,
+  only ever incremented, even when an appointment in that period is cancelled.
+- Free follow-up pricing (`_price_for`): a follow-up `VisitType` is priced 0 and gets `followup_of` set when the
+  patient has a `completed` appointment with the same doctor within `visit_type.free_followup_days`.
+- Closing a day (`doctors:exception_add` with kind `closed`/`custom`) checks `affected_by_closing()` for the date
+  being closed; if any active appointment no longer fits, the exception still saves but the response carries
+  `HX-Redirect` to `scheduling:affected` instead of swapping the exceptions partial — staff reschedule each
+  affected appointment to a freshly-computed suggestion (`reschedule_to_suggestion`) one at a time.
+- Booking screen (`/booking/`) is a single doctor-scoped flow: search (reuses `Patient.search`) → quick-add if not
+  found → visit type + day picker → `/booking/<patient>/slots/` (HTMX partial, branches on `doctor.booking_mode`)
+  → `POST /booking/<patient>/confirm/` → redirects to a cleared `/booking/` with a toast (matches the "search
+  screen returns empty, ready for the next patient" UX in `03-modules-and-ux.md` §3.2). The actual "ابعت رسالة
+  تأكيد" / scheduled-reminders part of that screen's mockup is Phase 4 (`notifications` doesn't exist yet) —
+  `book()` has a commented-out `transaction.on_commit` hook marking where it plugs in.
+- Permissions added: `appointment.view` (all roles), `appointment.book`/`reschedule`/`cancel` (reception/doctor/
+  admin/owner), `appointment.overbook` (doctor/owner only — reception's "حجز استثنائي" button is hidden, not just
+  disabled, when the period is full and they lack this permission).
+- Tests needing a frozen clock use `freezegun` (new dev dependency) — Egypt's DST (2026: Apr 25 → Oct 30) matters
+  for same-day "is this slot still in the future" checks, not just for `periods_for` from Phase 1.

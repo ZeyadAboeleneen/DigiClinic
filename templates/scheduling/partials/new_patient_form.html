@@ -1,0 +1,16 @@
+{% load i18n %}
+<form method="post" action="{% url 'scheduling:booking_new_patient' %}" class="space-y-3">
+  {% csrf_token %}
+  <div class="grid gap-3 sm:grid-cols-2">
+    {% include "partials/field.html" with field=form.full_name %}
+    {% include "partials/field.html" with field=form.gender %}
+  </div>
+  <div class="grid gap-3 sm:grid-cols-2">
+    {% include "partials/field.html" with field=form.phone %}
+    {% include "partials/field.html" with field=form.age_years %}
+  </div>
+  <label class="flex items-center gap-2 text-xs text-stone-600">{{ form.messaging_consent }} {% translate "موافق على استقبال رسايل التذكير" %}</label>
+  <input type="hidden" name="whatsapp_same_as_phone" value="on">
+  <input type="hidden" name="preferred_channel" value="whatsapp">
+  <button type="submit" class="btn-primary">{% translate "إضافة وحجز" %}</button>
+</form>

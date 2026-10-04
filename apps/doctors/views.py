@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
 
@@ -8,15 +9,8 @@ from apps.audit import services as audit
 from apps.core.timeutils import WEEKDAY_LABELS
 
 from .forms import DoctorForm, ScheduleExceptionForm, VisitTypeForm, WorkingPeriodForm
-from .models import Doctor, ScheduleException, VisitType, WorkingPeriod
-
-
-def _get_doctor(org):
-    """Single-doctor v1: the UI always edits the organization's one Doctor row, created on first visit."""
-    doctor, _created = Doctor.objects.get_or_create(
-        organization=org, defaults={"name_ar": org.settings.clinic_name_ar or org.name_ar}
-    )
-    return doctor
+from .models import ScheduleException, VisitType, WorkingPeriod
+from .services import get_doctor as _get_doctor
 
 
 def _schedule_ctx(request, doctor, form=None):
@@ -89,16 +83,22 @@ def _exceptions_partial(request, doctor):
 def exception_add(request):
     doctor = _get_doctor(request.organization)
     form = ScheduleExceptionForm(request.POST)
-    if form.is_valid():
-        exc = form.save(commit=False)
-        exc.organization = request.organization
-        exc.doctor = doctor
-        exc.save()
-        audit.log("settings.doctor", request=request, summary=f"{_('استثناء جدول')}: {exc.date}")
     if not form.is_valid():
         ctx = _schedule_ctx(request, doctor)
         ctx["exception_form"] = form
         return render(request, "doctors/partials/exceptions.html", ctx)
+    exc = form.save(commit=False)
+    exc.organization = request.organization
+    exc.doctor = doctor
+    exc.save()
+    audit.log("settings.doctor", request=request, summary=f"{_('استثناء جدول')}: {exc.date}")
+    if exc.kind in ("closed", "custom"):
+        from apps.scheduling.services import affected_by_closing
+
+        if affected_by_closing(doctor, exc.date):
+            from django.urls import reverse
+
+            return HttpResponse(headers={"HX-Redirect": reverse("scheduling:affected") + f"?date={exc.date}"})
     return _exceptions_partial(request, doctor)
 
 

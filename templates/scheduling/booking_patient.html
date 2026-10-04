@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "حجز" %} — {{ patient.full_name }}{% endblock %}
+{% block content %}
+<div class="mb-4 flex items-center justify-between">
+  <div>
+    <h1 class="text-2xl font-bold">{{ patient.full_name }}</h1>
+    <p class="text-sm text-stone-500" dir="ltr">#{{ patient.file_number }} · {{ patient.phone }}</p>
+  </div>
+  <a href="{% url 'scheduling:booking_home' %}" class="btn-ghost">{% translate "← بحث تاني" %}</a>
+</div>
+
+{% if upcoming %}
+<div class="card mb-4 p-3 text-sm">
+  <span class="font-semibold">{% translate "حجوزات جاية:" %}</span>
+  {% for a in upcoming %}<span class="ms-2">{{ a.start_at|date:"Y/m/d H:i" }} ({{ a.visit_type.name_ar }})</span>{% endfor %}
+</div>
+{% endif %}
+
+{% if not visit_types %}
+<p class="card p-4 text-sm text-stone-500">{% translate "مفيش أنواع زيارات متعرّفة. ضيفها من الإعدادات." %}</p>
+{% else %}
+<div class="card p-4">
+  <div class="mb-3 flex flex-wrap gap-2" id="visit-type-tabs">
+    {% for vt in visit_types %}
+    <a href="?visit_type={{ vt.pk }}&day={{ day }}"
+       class="badge cursor-pointer px-3 py-1.5 {% if vt.pk|stringformat:'s' == visit_type_id|stringformat:'s' %}bg-brand text-white{% else %}bg-stone-100 text-stone-700{% endif %}">
+      {{ vt.name_ar }} — {{ vt.price }} {% translate "ج.م" %}
+    </a>
+    {% endfor %}
+  </div>
+
+  <div class="mb-3 flex items-center gap-2 text-sm">
+    <a href="?visit_type={{ visit_type_id }}&day={{ prev_day }}" class="btn-ghost">←</a>
+    <span class="font-mono" dir="ltr">{{ day }}</span>
+    <a href="?visit_type={{ visit_type_id }}&day={{ next_day }}" class="btn-ghost">→</a>
+  </div>
+
+  <div id="slots"
+       hx-get="{% url 'scheduling:booking_slots' patient.pk %}?visit_type={{ visit_type_id }}&day={{ day }}"
+       hx-trigger="load" hx-swap="innerHTML">
+    {% translate "بيتحمّل..." %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

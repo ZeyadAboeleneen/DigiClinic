@@ -1,0 +1,25 @@
+{% load i18n %}
+<div class="space-y-3">
+  {% if patients %}
+  <ul class="card divide-y divide-stone-100">
+    {% for p in patients %}
+    <li>
+      <a href="{% url 'scheduling:booking_patient' p.pk %}" class="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-sand/60">
+        <span class="font-mono text-xs text-stone-400" dir="ltr">#{{ p.file_number }}</span>
+        <span class="font-semibold">{{ p.full_name }}</span>
+        <span class="text-stone-500" dir="ltr">{{ p.phone }}</span>
+        {% if p.allergies.exists %}<span class="badge bg-red-50 text-red-700">{% translate "حساسية" %}</span>{% endif %}
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% elif q %}
+  <p class="text-sm text-stone-500">{% translate "مفيش مريض بالبيانات دي." %}</p>
+  {% endif %}
+  {% if q %}
+  <details class="card p-4" {% if not patients %}open{% endif %}>
+    <summary class="cursor-pointer font-semibold text-brand">+ {% translate "مريض جديد" %}</summary>
+    <div class="mt-3">{% include "scheduling/partials/new_patient_form.html" %}</div>
+  </details>
+  {% endif %}
+</div>

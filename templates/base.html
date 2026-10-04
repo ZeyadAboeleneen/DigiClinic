@@ -33,6 +33,18 @@
         <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m3 11 9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
         {% translate "الرئيسية" %}
       </a>
+      {% if can.appointment_book %}
+      <a href="{% url 'scheduling:booking_home' %}" class="nav-link {% if url_name == 'scheduling:booking_home' or url_name == 'scheduling:booking_patient' %}active{% endif %}">
+        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
+        {% translate "حجز جديد" %}
+      </a>
+      {% endif %}
+      {% if can.appointment_view %}
+      <a href="{% url 'scheduling:appointments_day' %}" class="nav-link {% if url_name == 'scheduling:appointments_day' %}active{% endif %}">
+        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v4M16 2v4M3 9h18M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/></svg>
+        {% translate "المواعيد" %}
+      </a>
+      {% endif %}
       {% if can.patient_view_basic %}
       <a href="{% url 'patients:list' %}" class="nav-link {% if url_name|slice:':9' == 'patients:' %}active{% endif %}">
         <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9zM9 11h2l1-2 2 4 1-2h1"/></svg>
