@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "apps.doctors",
     "apps.patients",
     "apps.scheduling",
+    "apps.notifications",
 ]
 
 MIDDLEWARE = [
@@ -143,14 +144,14 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="DigiClinic <no-reply@loc
 
 # Outgoing email/WhatsApp (SMTP settings come from the settings UI, encrypted in the DB).
 MESSAGING_EMAIL_BACKEND = env("MESSAGING_EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")
-MESSAGING_SYNC = False  # True = send inline (tests); False = background thread locally, Celery in prod
-MESSAGING_RETRY_DELAYS = (60, 300, 900)  # seconds between automatic retries of temporary errors
+MESSAGING_RETRY_DELAYS = (60, 300, 900)  # 06 §6.2: retry temporary failures after 1, 5, 15 minutes
+SCHEDULER_TICK_SECONDS = 20
+NOTIFY_SLEEP_BETWEEN_WA = True  # anti-ban gap (NotificationSettings.wa_min_gap_seconds + jitter); off in tests
 
 # Local WhatsApp gateway (whatsapp-gateway/server.js). Only Django talks to it, over localhost.
 WA_GATEWAY_URL = env("WA_GATEWAY_URL", default="http://127.0.0.1:3320")
 WA_GATEWAY_KEY = env("WA_GATEWAY_KEY", default="")
 WA_WEBHOOK_SECRET = env("WA_WEBHOOK_SECRET", default="")  # defaults to WA_GATEWAY_KEY
-WA_RATE_LIMIT_SECONDS = 20  # at most one WhatsApp message every 20s from the same number
 
 LOGGING = {
     "version": 1,

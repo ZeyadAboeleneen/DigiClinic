@@ -23,7 +23,7 @@
 
 ## إيه اللي لسه (Phases 4–10)
 راجع `docs/plan/08-roadmap.md` بالتفصيل. ملخص سريع:
-- **Phase 4 — Notifications Engine** (التالية): `NotificationSettings`, `NotificationTemplate`, `ScheduledMessage` (outbox)، الـdispatcher، `run_scheduler`، ربط `messaging.Delivery` بـ`ScheduledMessage`. **مهم**: `apps/scheduling/services.py` فيه سطر معلّق (`# transaction.on_commit(lambda: notifications.schedule_for(appt))`) جوه `book()` — ده المكان اللي هيتوصل فيه.
+- ~~Phase 4 — Notifications Engine~~ ✅ (راجع "Notifications notes (Phase 4)" في CLAUDE.md)
 - Phase 5 — Reception Screen, No-show & Payments
 - Phase 6 — Doctor Desk & Medical File
 - Phase 7 — Prescriptions

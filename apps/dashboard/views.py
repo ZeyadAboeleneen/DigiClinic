@@ -3,6 +3,8 @@ from django.shortcuts import render
 from apps.accounts.permissions import require_membership
 from apps.messaging import whatsapp
 from apps.messaging.models import ChannelKind, SendingChannelConfig
+from apps.notifications import services as notifications
+from apps.notifications.models import MessageStatus, ScheduledMessage
 
 
 def _wa_state(org):
@@ -15,5 +17,10 @@ def _wa_state(org):
 
 @require_membership
 def home(request):
-    ctx = {"wa_state": _wa_state(request.organization)}
+    org = request.organization
+    ctx = {
+        "wa_state": _wa_state(org),
+        "scheduler_alive": notifications.scheduler_alive(),
+        "failed_messages": ScheduledMessage.objects.for_org(org).filter(status=MessageStatus.FAILED).count(),
+    }
     return render(request, "dashboard/home.html", ctx)

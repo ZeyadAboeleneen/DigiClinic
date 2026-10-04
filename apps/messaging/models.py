@@ -68,8 +68,11 @@ PENDING_STATUSES = {DeliveryStatus.QUEUED, DeliveryStatus.SENDING}
 
 
 class Delivery(TenantScopedModel):
-    """A generic outbound message record. Rebuilt in Phase 4 to be driven by `notifications.ScheduledMessage`."""
+    """One send attempt for a `notifications.ScheduledMessage` (provider id + ✓✓ acks)."""
 
+    scheduled_message = models.ForeignKey(
+        "notifications.ScheduledMessage", null=True, blank=True, on_delete=models.CASCADE, related_name="deliveries"
+    )
     channel = models.CharField(max_length=20, choices=ChannelKind.choices)
     recipient = models.CharField(max_length=254)
     recipient_name = models.CharField(max_length=150, blank=True)
@@ -98,3 +101,19 @@ class Delivery(TenantScopedModel):
     @property
     def is_pending(self):
         return self.status in PENDING_STATUSES
+
+
+class WhatsAppNumber(TenantScopedModel):
+    """Cached `isRegisteredUser` result (06 §6.6) so we never message numbers that aren't on WhatsApp."""
+
+    number = models.CharField(max_length=20)
+    is_registered = models.BooleanField()
+    checked_at = models.DateTimeField()
+
+    objects = OrgQuerySet.as_manager()
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["organization", "number"], name="uniq_wa_number")]
+
+    def __str__(self):
+        return f"{self.number}: {self.is_registered}"

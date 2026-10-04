@@ -9,6 +9,9 @@
  *   POST /sessions/:id/start     → begins linking (QR appears in GET)
  *   POST /sessions/:id/logout    → unlinks the phone
  *   POST /sessions/:id/send      → { to, caption, filename?, pdf_base64? } → { id }
+ *   GET  /sessions/:id/check/:n  → { registered } (isRegisteredUser — never message numbers not on WhatsApp)
+ *
+ * Incoming 1:1 messages are forwarded to the webhook as { event: "message", id, from, body } (stored only).
  */
 "use strict";
 
@@ -151,6 +154,18 @@ function start(id) {
     notify({ event: "ack", session: id, id: msg.id._serialized, ack });
   });
 
+  client.on("message", (msg) => {
+    // Only plain 1:1 chats; groups, statuses and our own messages are ignored.
+    if (msg.fromMe || msg.isStatus || !/@c\.us$/.test(msg.from || "")) return;
+    notify({
+      event: "message",
+      session: id,
+      id: msg.id._serialized,
+      from: msg.from.split("@")[0],
+      body: msg.type === "chat" ? msg.body : `[${msg.type}]`,
+    });
+  });
+
   client.initialize().catch((err) => {
     console.error(`session ${id} failed to start:`, err.message);
     s.state = "error";
@@ -198,6 +213,17 @@ app.post("/sessions/:id/logout", async (req, res) => {
   }
   sessions.delete(req.params.id);
   res.json({ state: "disconnected" });
+});
+
+app.get("/sessions/:id/check/:number", async (req, res) => {
+  const s = getSession(req.params.id);
+  if (!s.client || s.state !== "ready") return res.status(409).json({ error: "not_ready" });
+  if (!/^\d{8,15}$/.test(req.params.number)) return res.status(400).json({ error: "bad_number" });
+  try {
+    res.json({ registered: await s.client.isRegisteredUser(`${req.params.number}@c.us`) });
+  } catch (err) {
+    res.status(502).json({ error: "check_failed", detail: err.message });
+  }
 });
 
 app.post("/sessions/:id/send", async (req, res) => {

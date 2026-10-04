@@ -88,7 +88,7 @@ class WhatsAppProvider:
             # id can be null when WhatsApp accepted the message but didn't expose its key (no ✓✓ tracking).
             return ProviderResult(ok=True, provider_message_id=data.get("id") or "")
         code = data.get("error", "")
-        temporary = code == "send_failed"
+        temporary = code in ("send_failed", "not_ready") or r.status_code >= 500
         detail = data.get("detail", "")
         return ProviderResult(
             ok=False, error=ERRORS.get(code, f"فشل الإرسال بالواتساب: {code} {detail}".strip()), temporary=temporary
@@ -106,6 +106,18 @@ class WhatsAppProvider:
 
     def send_text(self, to_e164: str, text: str) -> ProviderResult:
         return self._post_send({"to": to_wa_number(to_e164), "caption": text})
+
+
+def is_registered(org, e164: str) -> bool | None:
+    """True/False from the gateway's `isRegisteredUser`; None when the gateway can't tell (down / not linked)."""
+    try:
+        with _client(timeout=20.0) as c:
+            r = c.get(f"/sessions/{session_id(org)}/check/{to_wa_number(e164)}")
+        if r.status_code != 200:
+            return None
+        return bool(r.json().get("registered"))
+    except (httpx.HTTPError, ValueError):
+        return None
 
 
 def verify_signature(body: bytes, signature: str) -> bool:

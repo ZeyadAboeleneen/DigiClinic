@@ -3,6 +3,7 @@ REM DigiClinic - start the system locally (no Docker needed)
 cd /d "%~dp0"
 set TAILWINDCSS_VERSION=v4.3.3
 set PYTHONUTF8=1
+set UV_NATIVE_TLS=1
 set "UV=python -m uv"
 where uv >nul 2>nul && set "UV=uv"
 echo [1/6] Installing packages...
@@ -14,8 +15,10 @@ echo [3/6] Building styles...
 echo [4/6] Updating database...
 .venv\Scripts\python manage.py migrate --noinput || goto :error
 .venv\Scripts\python manage.py seed_org || goto :error
-echo [5/6] Starting WhatsApp gateway...
+.venv\Scripts\python manage.py seed_notifications || goto :error
+echo [5/6] Starting WhatsApp gateway and message scheduler...
 call :whatsapp
+start "DigiClinic Scheduler" /min .venv\Scripts\python manage.py run_scheduler
 echo.
 echo   [6/6] DigiClinic is running:  http://127.0.0.1:8010
 echo   Keep this window open. Press Ctrl+C to stop.

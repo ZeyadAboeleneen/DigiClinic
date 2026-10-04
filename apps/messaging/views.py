@@ -169,6 +169,17 @@ def whatsapp_webhook(request):
     event = payload.get("event")
     if event == "ack":
         services.apply_ack(str(payload.get("id", "")), int(payload.get("ack") or 0))
+    elif event == "message":
+        from apps.notifications.services import record_inbound
+
+        session = str(payload.get("session", ""))
+        if session.isdigit() and payload.get("id") and payload.get("from"):
+            record_inbound(
+                int(session),
+                provider_message_id=str(payload["id"]),
+                from_number=str(payload["from"]),
+                body=str(payload.get("body", "")),
+            )
     elif event == "status":
         session = str(payload.get("session", ""))
         if session.isdigit():

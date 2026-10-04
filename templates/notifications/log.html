@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "سجل الرسايل" %}{% endblock %}
+{% block content %}
+<h1 class="mb-4 text-2xl font-bold">{% translate "سجل الرسايل" %}</h1>
+
+{% include "notifications/partials/scheduler_warning.html" %}
+
+<form method="get" class="card mb-4 grid gap-3 p-4 text-sm sm:grid-cols-5 sm:items-end">
+  <div class="form-field">
+    <label for="f-status">{% translate "الحالة" %}</label>
+    <select id="f-status" name="status">
+      <option value="">{% translate "الكل" %}</option>
+      {% for value, label in statuses %}<option value="{{ value }}" {% if value == status %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="form-field">
+    <label for="f-event">{% translate "النوع" %}</label>
+    <select id="f-event" name="event">
+      <option value="">{% translate "الكل" %}</option>
+      {% for value, label in events %}<option value="{{ value }}" {% if value == event %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="form-field">
+    <label for="f-day">{% translate "اليوم" %}</label>
+    <input id="f-day" type="date" name="day" value="{{ day|date:'Y-m-d' }}">
+  </div>
+  {% if appointment %}<input type="hidden" name="appointment" value="{{ appointment }}">{% endif %}
+  <button class="btn-secondary">{% translate "عرض" %}</button>
+  {% if status or event or day or appointment %}<a href="{% url 'notifications:log' %}" class="btn-ghost">{% translate "مسح الفلتر" %}</a>{% endif %}
+</form>
+
+<div class="card overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-stone-50 text-xs text-stone-500">
+      <tr>
+        <th class="px-3 py-2 text-start">{% translate "الميعاد المجدول" %}</th>
+        <th class="px-3 py-2 text-start">{% translate "المريض" %}</th>
+        <th class="px-3 py-2 text-start">{% translate "النوع" %}</th>
+        <th class="px-3 py-2 text-start">{% translate "القناة" %}</th>
+        <th class="px-3 py-2 text-start">{% translate "الحالة" %}</th>
+        <th class="px-3 py-2"></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-stone-100">
+      {% for m in page %}{% include "notifications/partials/log_row.html" %}
+      {% empty %}
+      <tr><td colspan="6" class="px-3 py-10 text-center text-stone-500">{% translate "مفيش رسايل." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if page.has_other_pages %}
+<div class="mt-4 flex items-center justify-center gap-3 text-sm">
+  {% if page.has_previous %}<a class="btn-ghost" href="?status={{ status }}&event={{ event }}&day={{ day|date:'Y-m-d' }}&appointment={{ appointment }}&page={{ page.previous_page_number }}">→</a>{% endif %}
+  <span>{{ page.number }} / {{ page.paginator.num_pages }}</span>
+  {% if page.has_next %}<a class="btn-ghost" href="?status={{ status }}&event={{ event }}&day={{ day|date:'Y-m-d' }}&appointment={{ appointment }}&page={{ page.next_page_number }}">←</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

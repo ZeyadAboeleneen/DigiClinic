@@ -20,6 +20,8 @@ RECEPTION = VIEWER | {
     "appointment.book",
     "appointment.reschedule",
     "appointment.cancel",
+    "messages.view",
+    "messages.retry",
 }
 DOCTOR = VIEWER | {
     "schedule.manage",
@@ -32,6 +34,8 @@ DOCTOR = VIEWER | {
     "appointment.reschedule",
     "appointment.cancel",
     "appointment.overbook",
+    "messages.view",
+    "messages.retry",
 }
 ADMIN = VIEWER | {
     "user.manage",
@@ -46,6 +50,8 @@ ADMIN = VIEWER | {
     "appointment.book",
     "appointment.reschedule",
     "appointment.cancel",
+    "messages.view",
+    "messages.retry",
 }
 OWNER = ADMIN | DOCTOR | RECEPTION
 

@@ -1,0 +1,6 @@
+{% load i18n %}
+{% if ok %}
+<p class="text-sm font-semibold text-green-700">✓ {% translate "اتبعتت. شوف موبايلك/الإيميل." %}</p>
+{% else %}
+<p class="text-sm font-semibold text-red-700">{% translate "فشل:" %} {{ error }}</p>
+{% endif %}

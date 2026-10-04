@@ -1,0 +1,22 @@
+{% load i18n %}
+<tr id="msg-{{ m.pk }}" class="align-top">
+  <td class="whitespace-nowrap px-3 py-2 font-mono text-xs" dir="ltr">{{ m.send_at|date:"Y-m-d H:i" }}</td>
+  <td class="px-3 py-2">
+    {% if m.patient %}<a href="{% url 'patients:detail' m.patient.pk %}" class="font-semibold hover:text-brand">{{ m.patient.full_name }}</a>{% else %}<span class="text-stone-400">—</span>{% endif %}
+    {% if m.appointment_id %}<a href="?appointment={{ m.appointment_id }}" class="block text-xs text-stone-500">{% translate "رسايل الحجز ده" %}</a>{% endif %}
+  </td>
+  <td class="px-3 py-2">{{ m.get_event_display }}</td>
+  <td class="px-3 py-2">{{ m.get_channel_display }}</td>
+  <td class="px-3 py-2">
+    <span class="badge {% if m.status == 'sent' %}bg-green-50 text-green-700{% elif m.status == 'failed' %}bg-red-50 text-red-700{% elif m.status == 'pending' or m.status == 'sending' %}bg-amber-50 text-amber-700{% else %}bg-stone-100 text-stone-500{% endif %}">{{ m.get_status_display }}</span>
+    {% for d in m.deliveries.all %}{% if forloop.last and d.status == 'read' %}<span title="{% translate 'اتقرت' %}" class="text-sky-600">✓✓</span>{% elif forloop.last and d.status == 'delivered' %}<span title="{% translate 'اتسلّمت' %}" class="text-stone-500">✓✓</span>{% endif %}{% endfor %}
+    {% if m.status_reason %}<div class="text-xs text-stone-500">{{ m.status_reason }}</div>{% endif %}
+    {% if m.attempts > 1 %}<div class="text-xs text-stone-400">{% blocktranslate with n=m.attempts %}{{ n }} محاولات{% endblocktranslate %}</div>{% endif %}
+  </td>
+  <td class="whitespace-nowrap px-3 py-2 text-end">
+    {% if can.messages_retry %}
+      {% if m.can_retry %}<button class="btn-ghost text-xs" hx-post="{% url 'notifications:retry' m.pk %}" hx-target="#msg-{{ m.pk }}" hx-swap="outerHTML">{% translate "إعادة المحاولة" %}</button>{% endif %}
+      {% if m.can_cancel %}<button class="btn-ghost text-xs text-red-600" hx-post="{% url 'notifications:cancel' m.pk %}" hx-target="#msg-{{ m.pk }}" hx-swap="outerHTML" hx-confirm="{% translate 'تلغي الرسالة دي؟' %}">{% translate "إلغاء" %}</button>{% endif %}
+    {% endif %}
+  </td>
+</tr>

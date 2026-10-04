@@ -24,6 +24,7 @@
       <span class="badge" style="background:{{ a.visit_type.color }}22;color:{{ a.visit_type.color }}">{{ a.get_status_display }}</span>
       {% if a.is_overbooked %}<span class="badge bg-amber-50 text-amber-700">{% translate "استثنائي" %}</span>{% endif %}
       <span class="ms-auto flex gap-2">
+        {% if can.messages_view %}<a href="{% url 'notifications:log' %}?appointment={{ a.pk }}" class="btn-ghost text-xs">{% translate "الرسايل" %}</a>{% endif %}
         {% if a.status == "booked" and can.appointment_reschedule %}
         <form method="post" action="{% url 'scheduling:appointment_confirm' a.pk %}"><input type="hidden" name="next" value="{{ day }}">{% csrf_token %}<button class="btn-ghost text-xs">{% translate "تأكيد" %}</button></form>
         {% endif %}

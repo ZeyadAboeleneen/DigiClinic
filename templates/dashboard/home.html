@@ -7,6 +7,8 @@
   <p class="text-sm text-stone-500">{{ current_org.name_ar }}</p>
 </div>
 
+{% include "notifications/partials/scheduler_warning.html" %}
+
 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
   <div class="card p-5">
     <div class="text-sm text-stone-500">{% translate "حالة WhatsApp" %}</div>
@@ -16,9 +18,15 @@
     </div>
     {% if wa_state.state != 'ready' and wa_state.state != 'off' and can.settings_manage %}<a href="{% url 'messaging:whatsapp' %}" class="text-xs font-semibold text-brand">{% translate "اربطه ←" %}</a>{% endif %}
   </div>
+  {% if can.messages_view %}
+  <a href="{% url 'notifications:log' %}?status=failed" class="card block p-5 hover:border-brand">
+    <div class="text-sm text-stone-500">{% translate "رسايل فشلت" %}</div>
+    <div class="mt-1 text-2xl font-bold {% if failed_messages %}text-red-700{% else %}text-stone-400{% endif %}">{{ failed_messages }}</div>
+  </a>
+  {% endif %}
 </div>
 
 <div class="card mt-6 p-5 text-sm text-stone-500">
-  {% translate "الحجز والاستقبال وملف المريض والروشتة بيتضافوا في المراحل الجاية." %}
+  {% translate "شاشة الاستقبال وملف المريض والروشتة بيتضافوا في المراحل الجاية." %}
 </div>
 {% endblock %}

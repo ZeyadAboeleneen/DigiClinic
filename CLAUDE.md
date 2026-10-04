@@ -121,3 +121,39 @@ gotchas and conventions introduced in that phase.
   disabled, when the period is full and they lack this permission).
 - Tests needing a frozen clock use `freezegun` (new dev dependency) — Egypt's DST (2026: Apr 25 → Oct 30) matters
   for same-day "is this slot still in the future" checks, not just for `periods_for` from Phase 1.
+
+## Notifications notes (Phase 4)
+- `apps/notifications`: `NotificationSettings` (one per org, `for_org()` get-or-creates), `NotificationTemplate`,
+  `ScheduledMessage` (the outbox), `SchedulerHeartbeat`, `InboundMessage`. `simple-history` on settings/templates.
+  `messaging.Delivery` now has a `scheduled_message` FK (one `Delivery` per send attempt); `messaging.WhatsAppNumber`
+  caches the gateway's `isRegisteredUser` result for 30 days.
+- `services.py` only **enqueues** (`schedule_for`, `on_rescheduled`, `on_cancelled`, `enqueue`, `cancel_pending`);
+  `dispatcher.Dispatcher.run_once()` is the only code that sends. `scheduling.services.book/reschedule/cancel`
+  call the hooks via `transaction.on_commit` — tests must use `django_capture_on_commit_callbacks(execute=True)`
+  to see rows. `book(notify=False)` is used inside `reschedule()` (the "rescheduled" message replaces a fresh
+  confirmation). Phase 5 adds `on_no_show`/`on_queue_progress` on top of `enqueue()`.
+- `rescheduled` messages hang off the **new** appointment with `context={"old_date","old_time"}`; `cancelled`
+  messages hang off the cancelled one. Freshness guard (`Dispatcher.freshness`) per event: version mismatch →
+  `cancelled`, wrong appointment status → `cancelled`, less than `template.min_lead_minutes` left → `skipped`,
+  quiet hours re-applied at send time (a scheduler restarting at night defers instead of sending).
+- Quiet hours wrap midnight. `NotificationSettings.urgent_until` (default 23:00) is the plan's "rescheduled/cancelled
+  for today/tomorrow still go out in quiet hours before 11pm" knob — added as a field since 06 §6.5 says it's a setting.
+- Retries: `MESSAGING_RETRY_DELAYS` (60/300/900 s). WhatsApp `not_ready`/5xx are temporary; after the last retry →
+  `failed` + an email fallback row (`<dedupe_key>:fallback`) if `email_fallback` and the patient has an email.
+  Rows stuck in `sending` after a crash are marked `failed` on scheduler start (`recover_interrupted`) — never
+  auto-resent, to avoid duplicates.
+- `manage.py run_scheduler [--once]`: `pg_try_advisory_lock` (a second copy refuses to start), heartbeat every
+  tick (`SCHEDULER_TICK_SECONDS`=20), `JOBS` list (dispatch every tick, cleanup daily — Phase 5 adds
+  `mark_no_shows` there). Screens warn when the heartbeat is > 2 minutes old. `run.bat` starts it minimized.
+- WhatsApp anti-ban gap: the dispatcher sleeps `wa_min_gap_seconds` + 0–10 s jitter between sends in-process;
+  disabled in tests via `NOTIFY_SLEEP_BETWEEN_WA=False` (gap tests inject `sleep`/`monotonic`/`jitter`).
+- Templates screen: `org/settings/messages/` (settings.manage) — variable buttons, live HTMX preview with sample
+  data, "ابعت تجربة" (an `event=test` outbox row sent synchronously via `dispatcher.send_now`). Unknown `{vars}`
+  are rejected at save time (`templating.validate_body`). Message log: `/messages/` (`messages.view` /
+  `messages.retry`: reception/doctor/admin/owner, not viewer), filterable by status/event/day/appointment.
+- Gateway: new `GET /sessions/:id/check/:number` and inbound 1:1 messages forwarded as `event: "message"` →
+  `InboundMessage` (stored only, matched to a patient by phone).
+- `seed_notifications [--org] [--force]` creates the 9 default templates (06 §6.3) + settings from `clinic.json`;
+  run by `run.bat` after `seed_org`, idempotent.
+- Local setup gotcha: on this machine pip under Python 3.10 fails TLS verification (intercepting proxy/AV);
+  uv was installed with `C:\Python313\python.exe -m pip install --user uv` and `run.bat` now sets `UV_NATIVE_TLS=1`.

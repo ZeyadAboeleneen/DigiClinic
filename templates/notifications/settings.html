@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "الإعدادات" %}{% endblock %}
+{% block content %}
+<h1 class="mb-6 text-2xl font-bold">{% translate "الإعدادات" %}</h1>
+
+{% include "partials/settings_tabs.html" %}
+
+{% include "notifications/partials/scheduler_warning.html" %}
+
+<form method="post" class="space-y-6" novalidate>
+  {% csrf_token %}
+  <section class="card space-y-4 p-4 sm:p-6">
+    <h2 class="font-bold">{% translate "الرسايل التلقائية" %}</h2>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="flex items-center gap-2 text-sm font-semibold">{{ form.is_enabled }} {{ form.is_enabled.label }}</label>
+      <label class="flex items-center gap-2 text-sm font-semibold">{{ form.email_fallback }} {{ form.email_fallback.label }}</label>
+      {% include "partials/field.html" with field=form.default_channel %}
+    </div>
+    <h3 class="pt-2 text-sm font-bold text-stone-600">{% translate "ساعات الهدوء" %}</h3>
+    <div class="grid gap-4 sm:grid-cols-4">
+      {% include "partials/field.html" with field=form.quiet_start %}
+      {% include "partials/field.html" with field=form.quiet_end %}
+      {% include "partials/field.html" with field=form.quiet_policy %}
+      {% include "partials/field.html" with field=form.urgent_until %}
+    </div>
+    <div class="grid gap-4 sm:grid-cols-3">
+      {% include "partials/field.html" with field=form.wa_min_gap_seconds %}
+    </div>
+    <div class="flex justify-end">
+      <button type="submit" class="btn-primary">{% translate "حفظ" %}</button>
+    </div>
+  </section>
+</form>
+
+<section class="card mt-6 p-4 sm:p-6">
+  <div class="mb-3 flex items-center justify-between">
+    <h2 class="font-bold">{% translate "القوالب" %}</h2>
+    <form method="post" action="{% url 'notifications:template_add_reminder' %}">{% csrf_token %}
+      <button class="btn-secondary text-sm">+ {% translate "تذكير إضافي" %}</button>
+    </form>
+  </div>
+  <ul class="divide-y divide-stone-100">
+    {% for t in templates %}
+    <li class="flex flex-wrap items-center gap-3 py-3 text-sm">
+      <span class="font-semibold">{{ t.name_ar }}</span>
+      <span class="badge bg-stone-100 text-stone-600">{{ t.get_event_display }}</span>
+      {% if t.offset_minutes %}<span class="text-xs text-stone-500">{% blocktranslate with m=t.offset_minutes %}قبل الميعاد بـ{{ m }} دقيقة{% endblocktranslate %}</span>{% endif %}
+      {% if t.applies_to_mode != "all" %}<span class="text-xs text-stone-500">{{ t.get_applies_to_mode_display }}</span>{% endif %}
+      <span class="text-xs text-stone-500">{{ t.get_channel_display }}</span>
+      {% if not t.is_enabled %}<span class="badge bg-stone-100 text-stone-500">{% translate "مقفول" %}</span>{% endif %}
+      <a href="{% url 'notifications:template_edit' t.pk %}" class="ms-auto text-xs font-semibold text-brand">{% translate "تعديل" %}</a>
+    </li>
+    {% empty %}
+    <li class="py-4 text-center text-sm text-stone-400">{% translate "مفيش قوالب — شغّل seed_notifications." %}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

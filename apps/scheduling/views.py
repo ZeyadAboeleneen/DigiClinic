@@ -10,6 +10,7 @@ from apps.audit import services as audit
 from apps.core.timeutils import CAIRO
 from apps.doctors.models import BookingMode, VisitType
 from apps.doctors.services import get_doctor
+from apps.notifications.models import Event, MessageStatus
 from apps.patients import services as patient_services
 from apps.patients.forms import PatientForm
 from apps.patients.models import Patient
@@ -138,6 +139,17 @@ def booking_confirm(request, patient_pk):
     )
     label = f"#{appt.queue_number}" if appt.queue_number else appt.start_at.astimezone(CAIRO).strftime("%Y/%m/%d %H:%M")
     messages.success(request, _("اتحجز لـ%(p)s — %(w)s") % {"p": patient.full_name, "w": label})
+    scheduled = appt.messages.filter(status=MessageStatus.PENDING).order_by("send_at")
+    if scheduled:
+        parts = [
+            _("تأكيد الآن")
+            if m.event == Event.BOOKING_CONFIRMED
+            else _("تذكير %(t)s") % {"t": m.send_at.astimezone(CAIRO).strftime("%m/%d %H:%M")}
+            for m in scheduled
+        ]
+        messages.info(request, _("الرسايل: %(l)s") % {"l": " · ".join(parts)})
+    elif not patient.messaging_consent:
+        messages.warning(request, _("مفيش رسايل هتتبعت — المريض مش موافق على الرسايل."))
     return redirect("scheduling:booking_home")
 
 

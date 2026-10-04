@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 
 from apps.doctors.models import BookingMode
+from apps.notifications import services as notifications
 
 from .availability import periods_for
 from .models import (
@@ -142,6 +143,7 @@ def book(
     period_key=None,
     source=BookingSource.PHONE,
     overbook=False,
+    notify=True,
 ):
     if doctor.booking_mode == BookingMode.SLOTS:
         if start_at is None:
@@ -227,7 +229,8 @@ def book(
     AppointmentEvent.objects.create(
         organization=doctor.organization, appointment=appt, from_status="", to_status=appt.status, by=by
     )
-    # transaction.on_commit(lambda: notifications.schedule_for(appt))  # wired in Phase 4
+    if notify:
+        transaction.on_commit(lambda: notifications.schedule_for(appt, by=by))
     return appt
 
 
@@ -245,6 +248,7 @@ def reschedule(appt, *, by, new_start_at=None, new_day=None, new_period_key=None
         start_at=new_start_at,
         period_key=new_period_key,
         source=appt.source,
+        notify=False,  # on_rescheduled sends "rescheduled" instead of a fresh confirmation
     )
     new_appt.price, new_appt.discount, new_appt.followup_of_id = appt.price, appt.discount, appt.followup_of_id
     new_appt.save(update_fields=["price", "discount", "followup_of", "updated_at"])
@@ -260,6 +264,7 @@ def reschedule(appt, *, by, new_start_at=None, new_day=None, new_period_key=None
         by=by,
         notes=reason,
     )
+    transaction.on_commit(lambda: notifications.on_rescheduled(appt, new_appt, by=by))
     return new_appt
 
 
@@ -282,6 +287,7 @@ def cancel(appt, *, by, reason=""):
         by=by,
         notes=reason,
     )
+    transaction.on_commit(lambda: notifications.on_cancelled(appt, by=by))
     return appt
 
 
