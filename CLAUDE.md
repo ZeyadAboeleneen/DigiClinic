@@ -285,3 +285,15 @@ gotchas and conventions introduced in that phase.
   HTML5 DnD) or press "تأجيل" (phones) → `reschedule_options` dialog with that day's free slots / queue periods →
   `reschedule_confirm` → `services.reschedule()` (so the patient gets the "rescheduled" message and old reminders are
   cancelled). "قفل" per day (`close_day`, schedule.manage) → closed exception → affected-bookings screen if needed.
+
+## Deployment notes (Phase 10 — VPS, prepared; not yet run on the server)
+- `deploy/`: `Dockerfile` (web + scheduler image: Python 3.12, uv, Postgres 16 client for backups, Playwright
+  Chromium for PDFs, non-root, gunicorn gthread 2×4), `whatsapp.Dockerfile` (Node 20 + Debian chromium),
+  `compose.yml` (db/web/scheduler/whatsapp; only web published, on 127.0.0.1:${WEB_PORT}), `env.production.example`,
+  `nginx/digiclinic.conf` (new site file only, certbot `certonly --webroot`), `cron` (health alerts every 5 min +
+  off-site copy), `offsite-backup.sh` (rclone; files are already encrypted), `README.md` (the runbook — review first).
+- App changes for it: `/healthz/` (db + scheduler, no data), `manage.py check_health [--alert]` (owner e-mail, once per
+  problem per 6 h via `ops.alert` audit events; run from host cron so it works when the scheduler is down),
+  `SECURE_REDIRECT_EXEMPT` for the internal webhook + healthz, `EMAIL_URL`, `SITE_URL`, gateway `WA_GATEWAY_HOST`,
+  gunicorn dependency. Upload images are shrunk to 2000 px / JPEG 85 (07 §7.2) in `clinical.services.shrink_image`.
+- Docker isn't available on the dev machine: the images have not been built here. First build happens on the server.

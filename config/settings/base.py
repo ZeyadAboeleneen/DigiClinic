@@ -157,6 +157,7 @@ AUTO_BACKUP = env.bool("AUTO_BACKUP", default=True)  # daily backup from run_sch
 
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="DigiClinic <no-reply@localhost>")
+SITE_URL = env("SITE_URL", default="http://127.0.0.1:8010")  # used in alert e-mails
 
 # Outgoing email/WhatsApp (SMTP settings come from the settings UI, encrypted in the DB).
 MESSAGING_EMAIL_BACKEND = env("MESSAGING_EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")

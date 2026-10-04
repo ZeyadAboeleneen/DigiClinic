@@ -286,3 +286,19 @@ def test_desk_opens_patient_called_in_from_reception(client, world):
     resp = client.get(reverse("clinical:desk"))
     visit = Visit.objects.get(appointment=world["appts"][2])
     assert resp.url == reverse("clinical:visit", args=[visit.pk]) and visit.started_at
+
+
+def test_big_phone_photo_is_shrunk_and_rotated(world):
+    buf = io.BytesIO()
+    Image.new("RGB", (4000, 3000), "white").save(buf, "PNG")
+    f = SimpleUploadedFile("scan.png", buf.getvalue(), content_type="image/png")
+    att = services.add_attachment(patient=world["patients"][0], f=f, kind="radiology")
+    assert att.content_type == "image/jpeg" and att.file.name.endswith(".jpg")
+    with Image.open(att.file) as img:
+        assert img.size == (2000, 1500)
+    assert att.size < len(buf.getvalue())
+
+
+def test_small_png_is_kept_as_is(world):
+    att = services.add_attachment(patient=world["patients"][0], f=_png(), kind="lab")
+    assert att.content_type == "image/png"

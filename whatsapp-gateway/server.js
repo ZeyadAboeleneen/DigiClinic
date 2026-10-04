@@ -1,7 +1,7 @@
 /*
  * DigiClinic — local WhatsApp gateway (whatsapp-web.js).
  *
- * Listens on 127.0.0.1 only; every request needs the X-Api-Key header. One WhatsApp session per
+ * Listens on 127.0.0.1 by default (WA_GATEWAY_HOST=0.0.0.0 inside Docker, where only the compose network can reach it); every request needs the X-Api-Key header. One WhatsApp session per
  * organization (`/sessions/:id/...`). Events (ready / disconnected / message acks) are POSTed to
  * Django's webhook, signed with HMAC-SHA256 over the raw body.
  *
@@ -37,6 +37,7 @@ try {
 }
 
 const PORT = Number(process.env.WA_GATEWAY_PORT || 3320);
+const HOST = process.env.WA_GATEWAY_HOST || "127.0.0.1";
 const API_KEY = process.env.WA_GATEWAY_KEY || "";
 const WEBHOOK_URL = process.env.WA_WEBHOOK_URL || "http://127.0.0.1:8010/integrations/whatsapp/webhook/";
 const WEBHOOK_SECRET = process.env.WA_WEBHOOK_SECRET || API_KEY;
@@ -266,8 +267,8 @@ app.post("/sessions/:id/send", async (req, res) => {
   }
 });
 
-app.listen(PORT, "127.0.0.1", () => {
-  console.log(`DigiClinic WhatsApp gateway on http://127.0.0.1:${PORT} (data: ${DATA_DIR})`);
+app.listen(PORT, HOST, () => {
+  console.log(`DigiClinic WhatsApp gateway on http://${HOST}:${PORT} (data: ${DATA_DIR})`);
   // Re-open sessions that were linked before, so a restart doesn't need a new QR.
   try {
     for (const dir of fs.readdirSync(DATA_DIR)) {

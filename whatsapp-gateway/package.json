@@ -1,8 +1,8 @@
 {
-  "name": "marsool-whatsapp-gateway",
+  "name": "digiclinic-whatsapp-gateway",
   "version": "1.0.0",
   "private": true,
-  "description": "Local WhatsApp gateway for Marsool Al-Barq (whatsapp-web.js). Only Django talks to it.",
+  "description": "Local WhatsApp gateway for DigiClinic (whatsapp-web.js). Only Django talks to it.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

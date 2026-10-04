@@ -1,5 +1,6 @@
 """Doctor desk logic (03 §3.5). Views stay thin; appointment state changes still go through scheduling.services."""
 
+import io
 import re
 from datetime import timedelta
 
@@ -211,8 +212,38 @@ def sniff_upload(f) -> str:
     return IMAGE_TYPES[fmt]
 
 
+MAX_IMAGE_SIDE = 2000
+
+
+def shrink_image(f, content_type):
+    """07 §7.2: phone photos of scans are 3–8 MB; keep them readable but small (longest side 2000 px, JPEG 85).
+    Returns a new in-memory file, or the original when it's already small enough / not an image."""
+    from django.core.files.uploadedfile import InMemoryUploadedFile
+    from PIL import ImageOps
+
+    if not content_type.startswith("image/"):
+        return f
+    f.seek(0)
+    with Image.open(f) as img:
+        img = ImageOps.exif_transpose(img)  # phone photos carry their rotation in EXIF
+        if max(img.size) <= MAX_IMAGE_SIDE and content_type == "image/png":
+            f.seek(0)
+            return f
+        img.thumbnail((MAX_IMAGE_SIDE, MAX_IMAGE_SIDE))
+        buf = io.BytesIO()
+        img.convert("RGB").save(buf, "JPEG", quality=85, optimize=True)
+    if buf.tell() >= f.size and max(img.size) < MAX_IMAGE_SIDE:
+        f.seek(0)
+        return f
+    buf.seek(0)
+    return InMemoryUploadedFile(buf, "file", "upload.jpg", "image/jpeg", buf.getbuffer().nbytes, None)
+
+
 def add_attachment(*, patient, f, kind, title="", taken_on=None, visit=None, by=None):
     content_type = sniff_upload(f)
+    f = shrink_image(f, content_type)
+    if getattr(f, "content_type", "") == "image/jpeg":
+        content_type = "image/jpeg"
     ext = {"application/pdf": ".pdf", "image/jpeg": ".jpg", "image/png": ".png"}[content_type]
     f.name = f"upload{ext}"
     return Attachment.objects.create(

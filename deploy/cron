@@ -1,0 +1,10 @@
+# /etc/cron.d/digiclinic — host cron (runs OUTSIDE the containers, so alerts work even if the scheduler is down).
+# Adjust the path if the repo is not in /opt/digiclinic, and set RCLONE_REMOTE.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Owner e-mail if the message scheduler or WhatsApp has been down > 15 min (07 §7.4), every 5 minutes.
+*/5 * * * * root cd /opt/digiclinic/deploy && docker compose -f compose.yml --env-file .env exec -T web python manage.py check_health --alert >> /var/log/digiclinic-health.log 2>&1
+
+# Off-site backup copy at 03:30 (the scheduler makes the daily encrypted backup itself).
+30 3 * * * root RCLONE_REMOTE=CHANGE-ME:digiclinic-backups /opt/digiclinic/deploy/offsite-backup.sh >> /var/log/digiclinic-backup.log 2>&1
