@@ -10,7 +10,7 @@ from apps.organizations.models import Membership
 PASSWORD = "Strong-Pass-2026!"
 
 
-def _invite(client, org, make_member, role="sales"):
+def _invite(client, org, make_member, role="reception"):
     client.force_login(make_member(org, "owner"))
     resp = client.post(
         reverse("accounts:invite_create"), {"full_name": "Mona Ali", "email": "Mona@Example.com", "role": role}
@@ -35,7 +35,7 @@ def test_invite_flow_creates_user_and_membership(client, org_a, make_member):
     assert resp.status_code == 302
 
     user = User.objects.get(email="mona@example.com")
-    assert Membership.objects.get(user=user, organization=org_a).role == "sales"
+    assert Membership.objects.get(user=user, organization=org_a).role == "reception"
     resp = client.post(reverse("accounts:login"), {"username": "mona@example.com", "password": PASSWORD})
     assert resp.status_code == 302
 
@@ -72,11 +72,13 @@ def test_admin_cannot_invite_owner(client, org_a, make_member):
 def test_create_user_command(org_a):
     from django.core.management import call_command
 
-    call_command("create_user", email="Owner@Example.com", name="Owner", role="owner", org="albarq", password=PASSWORD)
+    call_command(
+        "create_user", email="Owner@Example.com", name="Owner", role="owner", org="demo-clinic", password=PASSWORD
+    )
     user = User.objects.get(email="owner@example.com")
     assert user.memberships.get().role == "owner"
     # Idempotent: running again updates, doesn't duplicate.
-    call_command("create_user", email="owner@example.com", name="Owner 2", role="admin", org="albarq")
+    call_command("create_user", email="owner@example.com", name="Owner 2", role="admin", org="demo-clinic")
     user.refresh_from_db()
     assert user.full_name == "Owner 2"
     assert user.memberships.count() == 1
@@ -89,7 +91,7 @@ def test_seed_org_is_idempotent(db):
     from apps.organizations.models import Organization
 
     call_command("seed_org")
-    org = Organization.objects.get(slug="albarq")
+    org = Organization.objects.get(slug="demo-clinic")
     org.settings.phones = ["0100"]
     org.settings.save()
     call_command("seed_org")  # must not clobber UI edits
@@ -97,7 +99,5 @@ def test_seed_org_is_idempotent(db):
     assert org.settings.phones == ["0100"]
     call_command("seed_org", force=True)
     org.settings.refresh_from_db()
-    assert org.settings.phones == ["0653451404", "01060777030", "01000967017"]
-    assert org.settings.quote_number_format == "{code}-{year}/{month:02d}/{day:02d}"
-    assert org.settings.validity_mode == "end_of_month"
-    assert len(org.settings.default_terms) == 5
+    assert org.settings.phones == ["01000000000", "0230000000"]
+    assert org.settings.clinic_name_ar == "عيادة د. سارة علي"

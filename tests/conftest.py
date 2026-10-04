@@ -23,7 +23,7 @@ def _reset_axes(db):
 def make_org(db):
     from apps.organizations.models import Organization, OrganizationSettings
 
-    def _make(slug="albarq", name="البرق للتجارة والتوريدات"):
+    def _make(slug="demo-clinic", name="عيادة ديمو"):
         org = Organization.objects.create(slug=slug, name_ar=name)
         OrganizationSettings.objects.create(organization=org)
         return org
@@ -47,7 +47,7 @@ def make_member(db):
 
 @pytest.fixture
 def org_a(make_org):
-    return make_org("albarq")
+    return make_org("demo-clinic")
 
 
 @pytest.fixture

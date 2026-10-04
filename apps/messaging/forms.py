@@ -1,8 +1,6 @@
 from django import forms
 from django.utils.translation import gettext_lazy as _
 
-from apps.organizations.models import OrganizationSettings
-
 from .providers import SECURITY_CHOICES
 
 
@@ -13,7 +11,7 @@ class EmailSettingsForm(forms.Form):
     host = forms.CharField(label=_("سيرفر SMTP"), max_length=200, widget=forms.TextInput(attrs={"dir": "ltr"}))
     port = forms.IntegerField(label=_("Port"), min_value=1, max_value=65535, initial=587)
     security = forms.ChoiceField(label=_("التشفير"), choices=SECURITY_CHOICES, initial="tls")
-    # Field names/attributes chosen so the browser doesn't autofill the Marsool login into them.
+    # Field names/attributes chosen so the browser doesn't autofill the DigiClinic login into them.
     smtp_user = forms.CharField(
         label=_("اسم المستخدم (الإيميل كامل)"),
         max_length=200,
@@ -52,23 +50,6 @@ class EmailSettingsForm(forms.Form):
                     % {"n": len(secret)},
                 )
         return cleaned
-
-
-class TemplatesForm(forms.ModelForm):
-    class Meta:
-        model = OrganizationSettings
-        fields = ["default_email_subject", "default_email_body", "default_whatsapp_message"]
-        widgets = {
-            "default_email_body": forms.Textarea(attrs={"rows": 9}),
-            "default_whatsapp_message": forms.Textarea(attrs={"rows": 6}),
-        }
-
-
-class SendForm(forms.Form):
-    subject = forms.CharField(label=_("عنوان الإيميل"), max_length=250)
-    body = forms.CharField(label=_("نص الإيميل"), widget=forms.Textarea(attrs={"rows": 9}))
-    wa_body = forms.CharField(label=_("رسالة الواتساب"), required=False, widget=forms.Textarea(attrs={"rows": 5}))
-    confirm = forms.BooleanField(label=_("راجعت الأصناف والأسعار بنفسي"), required=False)
 
 
 class WhatsAppTestForm(forms.Form):

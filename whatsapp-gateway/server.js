@@ -1,5 +1,5 @@
 /*
- * Marsool Al-Barq — local WhatsApp gateway (whatsapp-web.js).
+ * DigiClinic — local WhatsApp gateway (whatsapp-web.js).
  *
  * Listens on 127.0.0.1 only; every request needs the X-Api-Key header. One WhatsApp session per
  * organization (`/sessions/:id/...`). Events (ready / disconnected / message acks) are POSTed to
@@ -33,12 +33,12 @@ try {
   /* no .env */
 }
 
-const PORT = Number(process.env.WA_GATEWAY_PORT || 3310);
+const PORT = Number(process.env.WA_GATEWAY_PORT || 3320);
 const API_KEY = process.env.WA_GATEWAY_KEY || "";
-const WEBHOOK_URL = process.env.WA_WEBHOOK_URL || "http://127.0.0.1:8000/integrations/whatsapp/webhook/";
+const WEBHOOK_URL = process.env.WA_WEBHOOK_URL || "http://127.0.0.1:8010/integrations/whatsapp/webhook/";
 const WEBHOOK_SECRET = process.env.WA_WEBHOOK_SECRET || API_KEY;
 const DATA_DIR =
-  process.env.WA_DATA_DIR || path.join(process.env.LOCALAPPDATA || os.homedir(), "marsool-albarq", "whatsapp");
+  process.env.WA_DATA_DIR || path.join(process.env.LOCALAPPDATA || os.homedir(), "digiclinic", "whatsapp");
 
 if (!API_KEY) {
   console.error("WA_GATEWAY_KEY is not set. Refusing to start.");
@@ -222,7 +222,7 @@ app.post("/sessions/:id/send", async (req, res) => {
     try {
       const opts = { waitUntilMsgSent: true };
       if (pdf) {
-        const media = new MessageMedia("application/pdf", pdf, filename || "quotation.pdf");
+        const media = new MessageMedia("application/pdf", pdf, filename || "document.pdf");
         msg = await s.client.sendMessage(chatId, media, { ...opts, caption: caption || "", sendMediaAsDocument: true });
       } else {
         msg = await s.client.sendMessage(chatId, caption || "", opts);
@@ -241,7 +241,7 @@ app.post("/sessions/:id/send", async (req, res) => {
 });
 
 app.listen(PORT, "127.0.0.1", () => {
-  console.log(`Marsool WhatsApp gateway on http://127.0.0.1:${PORT} (data: ${DATA_DIR})`);
+  console.log(`DigiClinic WhatsApp gateway on http://127.0.0.1:${PORT} (data: ${DATA_DIR})`);
   // Re-open sessions that were linked before, so a restart doesn't need a new QR.
   try {
     for (const dir of fs.readdirSync(DATA_DIR)) {

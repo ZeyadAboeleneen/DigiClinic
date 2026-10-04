@@ -82,7 +82,7 @@ class Invitation(TenantScopedModel):
 
     email = models.EmailField(_("الإيميل"))
     full_name = models.CharField(_("الاسم"), max_length=150)
-    role = models.CharField(_("الدور"), max_length=20, choices=Role.choices, default=Role.SALES)
+    role = models.CharField(_("الدور"), max_length=20, choices=Role.choices, default=Role.RECEPTION)
     token_hash = models.CharField(max_length=64, unique=True)
     expires_at = models.DateTimeField()
     invited_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")

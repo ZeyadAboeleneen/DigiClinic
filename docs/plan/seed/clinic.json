@@ -1,0 +1,47 @@
+{
+  "_note": "بيانات تجريبية للتطوير. weekday: 0=السبت 1=الأحد 2=الاثنين 3=الثلاثاء 4=الأربعاء 5=الخميس 6=الجمعة",
+  "organization": {"slug": "demo-clinic", "name_ar": "عيادة ديمو", "name_en": "Demo Clinic"},
+  "settings": {
+    "clinic_name_ar": "عيادة د. سارة علي",
+    "clinic_name_en": "Dr. Sara Ali Clinic",
+    "primary_color": "#0E7C86",
+    "dark_color": "#0B2A33",
+    "neutral_color": "#F3F7F8",
+    "phones": ["01000000000", "0230000000"],
+    "address_ar": "الشيخ زايد — (عنوان تجريبي)",
+    "map_link": "https://maps.google.com/?q=Sheikh+Zayed",
+    "working_hours_text": "يوميًا ما عدا الخميس والجمعة من 2 م إلى 9 م",
+    "timezone": "Africa/Cairo"
+  },
+  "doctor": {
+    "name_ar": "سارة علي", "name_en": "Sara Ali", "title_ar": "د.",
+    "specialty_ar": "أخصائي الباطنة",
+    "qualifications": ["بكالوريوس الطب والجراحة — جامعة القاهرة", "ماجستير الأمراض الباطنة"],
+    "booking_mode": "slots", "slot_minutes": 10, "booking_horizon_days": 60, "min_notice_minutes": 0,
+    "queue_avg_minutes": 15, "near_turn_threshold": 3, "allow_overbooking": true
+  },
+  "working_periods": [
+    {"weekday": 0, "start": "14:00", "end": "21:00", "max_patients": 25},
+    {"weekday": 1, "start": "14:00", "end": "21:00", "max_patients": 25},
+    {"weekday": 2, "start": "14:00", "end": "21:00", "max_patients": 25},
+    {"weekday": 3, "start": "14:00", "end": "21:00", "max_patients": 25},
+    {"weekday": 4, "start": "14:00", "end": "21:00", "max_patients": 25}
+  ],
+  "visit_types": [
+    {"name_ar": "كشف", "duration_minutes": 20, "price": "400.00", "is_followup": false, "free_followup_days": 0, "color": "#0E7C86"},
+    {"name_ar": "إعادة", "duration_minutes": 10, "price": "200.00", "is_followup": true, "free_followup_days": 14, "color": "#6B9E3F"},
+    {"name_ar": "استشارة", "duration_minutes": 10, "price": "150.00", "is_followup": false, "free_followup_days": 0, "color": "#C08A1E"}
+  ],
+  "notification_settings": {
+    "is_enabled": true, "quiet_start": "22:00", "quiet_end": "09:00", "quiet_policy": "defer",
+    "default_channel": "preferred", "email_fallback": true,
+    "send_prescription_after_visit": false, "prescription_channel": "whatsapp",
+    "no_show_policy": "auto_rebook", "no_show_grace_minutes": 30, "no_show_queue_mark_at": "period_end",
+    "auto_rebook_after_days": 7, "auto_rebook_window_days": 14, "wa_min_gap_seconds": 15
+  },
+  "reminders": [
+    {"name_ar": "تذكير قبلها بيوم", "offset_minutes": 1440, "min_lead_minutes": 120, "applies_to_mode": "all"},
+    {"name_ar": "تذكير قبلها بساعة", "offset_minutes": 60, "min_lead_minutes": 10, "applies_to_mode": "slots"}
+  ],
+  "prescription": {"page_size": "A5", "print_mode": "full", "margin_top_mm": 45, "margin_bottom_mm": 25, "margin_right_mm": 12, "margin_left_mm": 12}
+}

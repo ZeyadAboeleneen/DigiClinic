@@ -2,7 +2,7 @@ import json
 
 from django.contrib import messages
 from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.views.decorators.csrf import csrf_exempt
@@ -10,164 +10,12 @@ from django.views.decorators.http import require_POST
 
 from apps.accounts.permissions import require_perm
 from apps.audit import services as audit
-from apps.customers.models import ChannelType, Contact
-from apps.organizations.models import OrganizationSettings
-from apps.quotations.models import Quotation
 
 from . import services, whatsapp
-from .forms import EmailSettingsForm, SendForm, TemplatesForm, WhatsAppTestForm
-from .models import ChannelKind, ChannelStatus, Delivery, SendingChannelConfig
+from .forms import EmailSettingsForm, WhatsAppTestForm
+from .models import ChannelKind, ChannelStatus, SendingChannelConfig
 
-
-def _quote(request, pk):
-    return get_object_or_404(
-        Quotation.objects.for_org(request.organization).select_related("customer", "contact", "organization"), pk=pk
-    )
-
-
-def _recipient_options(request, q):
-    """Every channel of every active contact of the customer, grouped by contact."""
-    contacts = (
-        Contact.objects.for_org(request.organization)
-        .filter(customer_id=q.customer_id, is_active=True)
-        .prefetch_related("channels")
-        .order_by("-is_primary", "name")
-    )
-    email_on = services.email_ready(q.organization)
-    wa_on = services.whatsapp_ready(q.organization)
-    options = []
-    for c in contacts:
-        chans = []
-        for ch in c.channels.all():
-            if ch.type == ChannelType.EMAIL:
-                enabled, wanted = email_on, c.preferred_channel in ("email", "both")
-            elif ch.type == ChannelType.WHATSAPP:
-                enabled, wanted = wa_on, c.preferred_channel in ("whatsapp", "both")
-            else:
-                continue  # plain phone numbers can't receive documents
-            default = enabled and wanted and c.pk == q.contact_id and ch.is_primary
-            chans.append({"ch": ch, "key": f"{ch.type}:{ch.pk}", "enabled": enabled, "default": default})
-        options.append({"contact": c, "channels": chans})
-    # Preferred channel unavailable? Fall back to whatever the main contact can receive.
-    for opt in options:
-        if opt["contact"].pk == q.contact_id and not any(x["default"] for x in opt["channels"]):
-            for x in opt["channels"]:
-                if x["enabled"]:
-                    x["default"] = True
-                    break
-    return options
-
-
-def _deliveries_ctx(q):
-    deliveries = list(q.deliveries.select_related("sent_by"))
-    return {"q": q, "deliveries": deliveries, "pending": any(d.is_pending for d in deliveries)}
-
-
-@require_perm("quotation.send")
-def send_page(request, pk):
-    q = _quote(request, pk)
-    if q.status not in services.SENDABLE_STATUSES:
-        messages.error(request, _("العرض ده مينفعش يتبعت في حالته الحالية."))
-        return redirect("quotations:detail", pk=q.pk)
-    subject_tpl, body_tpl = services.email_templates(q.organization)
-    variables = services.variables_for(q, q.contact, request.user)
-    form = SendForm(
-        initial={
-            "subject": services.render_template(subject_tpl, variables),
-            "body": services.render_template(body_tpl, variables),
-            "wa_body": services.render_template(services.whatsapp_templates(q.organization), variables),
-        }
-    )
-    ctx = {
-        "q": q,
-        "form": form,
-        "options": _recipient_options(request, q),
-        "reviewed": services.has_reviewed(q, request.user),
-        "email_ready": services.email_ready(q.organization),
-        "whatsapp_ready": services.whatsapp_ready(q.organization),
-        **_deliveries_ctx(q),
-    }
-    return render(request, "messaging/send.html", ctx)
-
-
-@require_POST
-@require_perm("quotation.send")
-def send_submit(request, pk):
-    q = _quote(request, pk)
-    form = SendForm(request.POST)
-    if not form.is_valid():
-        messages.error(request, _("اكتب عنوان ونص الرسالة."))
-        return redirect("messaging:send", pk=q.pk)
-
-    wanted = set(request.POST.getlist("recipients"))
-    recipients = []
-    for opt in _recipient_options(request, q):
-        for x in opt["channels"]:
-            if x["key"] in wanted:
-                recipients.append(
-                    services.Recipient(
-                        channel=ChannelKind.EMAIL if x["ch"].type == ChannelType.EMAIL else ChannelKind.WHATSAPP,
-                        value=x["ch"].value,
-                        name=str(opt["contact"]),
-                        contact_channel_id=x["ch"].pk,
-                    )
-                )
-    try:
-        services.create_deliveries(
-            q,
-            request.user,
-            recipients,
-            subject=form.cleaned_data["subject"],
-            body=form.cleaned_data["body"],
-            wa_body=form.cleaned_data["wa_body"],
-            confirmed=form.cleaned_data["confirm"],
-        )
-    except services.SendError as e:
-        messages.error(request, str(e))
-        return redirect("messaging:send", pk=q.pk)
-    audit.log(
-        "delivery.queued",
-        request=request,
-        target=q,
-        summary=f"{q.display_number} → " + "، ".join(f"{r.name} ({r.channel})" for r in recipients),
-    )
-    messages.success(request, _("الإرسال بدأ. الحالة بتتحدث هنا لوحدها."))
-    return redirect("messaging:send", pk=q.pk)
-
-
-@require_perm("quotation.view")
-def deliveries_partial(request, pk):
-    q = _quote(request, pk)
-    return render(request, "messaging/partials/deliveries.html", _deliveries_ctx(q))
-
-
-@require_POST
-@require_perm("quotation.send")
-def retry_delivery(request, pk):
-    d = get_object_or_404(Delivery.objects.for_org(request.organization).select_related("quotation"), pk=pk)
-    try:
-        services.retry(d, request.user)
-        messages.success(request, _("بنحاول نبعت تاني."))
-    except services.SendError as e:
-        messages.error(request, str(e))
-    return redirect("messaging:send", pk=d.quotation_id)
-
-
-@require_POST
-@require_perm("quotation.send")
-def fallback_email(request, pk):
-    d = get_object_or_404(
-        Delivery.objects.for_org(request.organization).select_related("quotation", "contact_channel"), pk=pk
-    )
-    try:
-        services.fallback_to_email(d, request.user)
-        messages.success(request, _("اتبعت بالإيميل بدل الواتساب."))
-    except services.SendError as e:
-        messages.error(request, str(e))
-    return redirect("messaging:send", pk=d.quotation_id)
-
-
-# --- settings ------------------------------------------------------------------------------
+# --- email settings --------------------------------------------------------------------------
 
 
 @require_perm("settings.manage")
@@ -226,28 +74,6 @@ def email_test(request):
     else:
         messages.error(request, _("فشل: %(e)s") % {"e": result.error})
     return redirect("messaging:email_settings")
-
-
-@require_perm("settings.manage")
-def templates_settings(request):
-    s, _created = OrganizationSettings.objects.get_or_create(organization=request.organization)
-    if not s.default_email_subject:
-        s.default_email_subject = services.DEFAULT_EMAIL_SUBJECT
-    if not s.default_email_body:
-        s.default_email_body = services.DEFAULT_EMAIL_BODY
-    if not s.default_whatsapp_message:
-        s.default_whatsapp_message = services.DEFAULT_WHATSAPP
-    form = TemplatesForm(request.POST or None, instance=s)
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        audit.log("settings.templates", request=request)
-        messages.success(request, _("القوالب اتحفظت."))
-        return redirect("messaging:templates")
-    return render(
-        request,
-        "messaging/settings_templates.html",
-        {"form": form, "variables": services.VARIABLES, "tab": "templates"},
-    )
 
 
 # --- WhatsApp settings -----------------------------------------------------------------------
@@ -321,7 +147,7 @@ def whatsapp_test(request):
         messages.error(request, " ".join(form.errors.get("to", [])) or _("رقم مش صحيح."))
         return redirect("messaging:whatsapp")
     result = whatsapp.WhatsAppProvider(request.organization).send_text(
-        form.cleaned_data["to"], _("رسالة تجربة من مرسول البرق ✓")
+        form.cleaned_data["to"], _("رسالة تجربة من DigiClinic ✓")
     )
     if result.ok:
         messages.success(request, _("رسالة التجربة اتبعتت."))

@@ -57,7 +57,7 @@ def _send_invite_email(request, invitation, link):
         "accounts/emails/invitation.txt",
         {"invitation": invitation, "link": link, "org": invitation.organization},
     )
-    send_mail(_("دعوة للانضمام إلى مرسول البرق"), body, None, [invitation.email])
+    send_mail(_("دعوة للانضمام إلى DigiClinic"), body, None, [invitation.email])
 
 
 @require_perm("user.manage")

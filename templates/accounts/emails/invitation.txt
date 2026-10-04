@@ -1,6 +1,6 @@
 {% load i18n %}{% autoescape off %}{% blocktranslate with name=invitation.full_name org=org.name_ar role=invitation.get_role_display %}أهلًا {{ name }}،
 
-اتدعيت تنضم لنظام «مرسول البرق» الخاص بـ{{ org }} بدور: {{ role }}.
+اتدعيت تنضم لنظام «DigiClinic» الخاص بـ{{ org }} بدور: {{ role }}.
 
 افتح الرابط ده واختار كلمة المرور بتاعتك (صالح لمدة 48 ساعة):{% endblocktranslate %}
 {{ link }}

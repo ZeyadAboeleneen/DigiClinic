@@ -1,57 +1,66 @@
-# 04 — Authentication, Permissions & Security
+# 04 — Authentication, Permissions & Medical-Data Security
 
-## 4.1 Authentication
+## 4.1 Authentication (زي البرق)
+Session auth · دعوات بلينك 48 ساعة · Argon2 · django-axes (5 محاولات / 15 دقيقة) · نسيت كلمة المرور بالإيميل.
+- Session timeout: **8 ساعات** من غير نشاط (يوم عمل)، و**قفل الشاشة** بعد 15 دقيقة خمول على شاشة الدكتور
+  (overlay يطلب الباسورد — الجهاز ممكن يفضل مفتوح والمريض قاعد قدامه).
+- 2FA (TOTP) للـowner/admin: مرحلة لاحقة.
 
-- Django session auth (cookie-based). مفيش تسجيل عام: المستخدمين بيتضافوا بدعوة من الأدمن.
-- الدعوة: رابط لمرة واحدة صالح 48 ساعة، المستخدم يحط الباسورد بنفسه.
-- Password hashing: **Argon2**. سياسة: 10 حروف كحد أدنى + Django validators.
-- **django-axes:** قفل بعد 5 محاولات فاشلة لمدة 15 دقيقة (per username + IP).
-- Session: تنتهي بعد 12 ساعة من غير نشاط، والـcookie: `Secure`, `HttpOnly`, `SameSite=Lax`.
-- "نسيت كلمة المرور" عن طريق الإيميل.
-- **2FA (TOTP)**: مرحلة لاحقة، إجباري للـowner/admin لما يتفعل.
+## 4.2 الأدوار
+| الدور | مين |
+|---|---|
+| `owner` | صاحب العيادة (غالبًا الدكتور) — كل حاجة |
+| `admin` | مدير النظام — الإعدادات والمستخدمين، **من غير** الملف الطبي إلا لو doctor برضه |
+| `doctor` | الدكتور — الملف الطبي والروشتات وجدوله |
+| `reception` | السكرتيرة/الممرضة — الحجز والاستقبال والدفع والعلامات الحيوية |
+| `viewer` | مشاهدة المواعيد بس |
 
-## 4.2 Roles & Permissions
+## 4.3 مصفوفة الصلاحيات (`apps/accounts/permissions.py`)
 
-| الصلاحية | viewer | sales | manager | admin | owner |
+| الصلاحية | viewer | reception | doctor | admin | owner |
 |---|:-:|:-:|:-:|:-:|:-:|
-| عرض العملاء/المنتجات/العروض | ✅ | ✅ | ✅ | ✅ | ✅ |
-| إنشاء وإصدار عرض | | ✅ | ✅ | ✅ | ✅ |
-| إرسال عرض | | ✅ | ✅ | ✅ | ✅ |
-| تعديل العملاء والمسؤولين | | ✅ | ✅ | ✅ | ✅ |
-| تعديل المنتجات والأسعار المرجعية | | | ✅ | ✅ | ✅ |
-| إلغاء عرض / تحديد مقبول-مرفوض | | own | ✅ | ✅ | ✅ |
-| سجل النشاط | | | ✅ | ✅ | ✅ |
-| إدارة المستخدمين | | | | ✅ | ✅ |
-| إعدادات الشركة والإرسال | | | | ✅ | ✅ |
-| حذف المنظمة / نقل الملكية | | | | | ✅ |
+| `appointment.view` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `appointment.book` / `reschedule` / `cancel` | | ✅ | ✅ | ✅ | ✅ |
+| `appointment.overbook` (استثنائي) | | | ✅ | | ✅ |
+| `reception.operate` (وصل/دخّل/لم يحضر) | | ✅ | ✅ | | ✅ |
+| `patient.view_basic` / `patient.edit_basic` | | ✅ | ✅ | ✅ | ✅ |
+| `patient.merge` | | | ✅ | ✅ | ✅ |
+| `vitals.record` | | ✅ | ✅ | | ✅ |
+| `clinical.view` (الزيارات، التشخيص، المرفقات) | | | ✅ | | ✅ |
+| `clinical.edit` | | | ✅ | | ✅ |
+| `attachment.upload` | | ✅ | ✅ | | ✅ |
+| `prescription.write` | | | ✅ | | ✅ |
+| `prescription.print` (إعادة طباعة) | | ⚙ | ✅ | | ✅ |
+| `payment.record` | | ✅ | ✅ | | ✅ |
+| `report.finance` | | | ✅ | | ✅ |
+| `messages.view` / `retry` | | ✅ | ✅ | ✅ | ✅ |
+| `drug.manage` / `rx_template.manage` | | | ✅ | | ✅ |
+| `schedule.manage` (المواعيد والاستثناءات) | | | ✅ | ✅ | ✅ |
+| `settings.manage` / `user.manage` | | | | ✅ | ✅ |
+| `audit.view` | | | | ✅ | ✅ |
 
-التنفيذ:
-- الدور متخزن في `Membership.role`، ومصفوفة الصلاحيات في كود واحد (`apps/accounts/permissions.py`).
-- Decorator/mixin: `@require_perm("quotation.send")` على كل view.
-- الـtemplates بتخفي الأزرار، **لكن الحماية الحقيقية في الـview**.
-- قابل للتوسع: لو احتجنا صلاحيات custom لكل مستخدم بعدين، نضيف `Membership.extra_permissions` (JSON).
+⚙ = بإعداد في "ملف المريض" (`reception_can_reprint_prescriptions`).
+السكرتيرة بتشوف **الحساسية** في كارت المريض (أمان)، لكن مش التشخيصات ولا الروشتات.
+التنفيذ زي البرق: `@require_perm(...)` على كل view، والـtemplates بتخفي بس.
 
-## 4.3 Security Checklist
+## 4.4 خصوصية البيانات الطبية
+> ده مش استشارة قانونية. **قبل البيع التجاري لعيادات**: مراجعة متطلبات قانون حماية البيانات الشخصية المصري
+> (151 لسنة 2020) ولائحته مع محامي — البيانات الصحية بيتعامل معاها كبيانات حساسة ليها اشتراطات أشد.
 
-**الشبكة والسيرفر**
-- HTTPS إجباري + HSTS. شهادة Let's Encrypt من الـcertbot الموجود.
-- كل الـcontainers على 127.0.0.1 أو الشبكة الداخلية. PostgreSQL وRedis وOpenWA **مش مكشوفين أبدًا**.
-- UFW: 22 (مع key-only SSH)، 80، 443 بس.
-- اختياري: تقييد الدخول للنظام بـIP أو Basic Auth إضافي في Nginx لو الموظفين من أماكن ثابتة.
+اللي بيتعمل في الكود من الأول:
+- **الموافقة على الرسايل** (`messaging_consent` + `consent_at` + مين سجلها). من غيرها مفيش رسايل. نص الموافقة ظاهر في form المريض.
+- **Audit لفتح الملف الطبي**: `audit.log("patient.clinical_view", ...)` عند فتح التاريخ/الزيارات/المرفقات (event واحد لكل مستخدم×مريض×ساعة).
+- **مفيش hard delete** للسجل الطبي (Visits/Prescriptions/Attachments). المريض بيتعمله archive. `simple-history` على البيانات الطبية.
+- **تصدير بيانات مريض** (PDF ملخص) لو طلبها — owner/doctor.
+- الملفات private (view بصلاحيات)، والـbackups متشفرة.
+- الـlogs: masking للأرقام (`+20100****567`)، ومفيش نصوص طبية ولا محتوى رسايل في الـlogs.
+- الرسايل الطالعة **ميبقاش فيها تشخيص** (القوالب الافتراضية مفيهاش). الروشتة PDF بس لو الإعداد مفعّل.
+- الإملاء الصوتي (Google) مذكور كمعالج خارجي، وفيه إعداد يقفله.
 
-**التطبيق**
-- `DEBUG=False`، `ALLOWED_HOSTS` محدد، `SECURE_*` settings كلها مفعلة.
-- CSRF على كل POST (HTMX بياخد الـtoken من header).
-- Content-Security-Policy: scripts من نفس الدومين بس (HTMX وAlpine متخزنين locally).
-- Tenant isolation test لكل view (راجعي 01-architecture).
-- رفع الملفات: صور بس للوجو والمنتجات، حد أقصى 5MB، التحقق بـPillow مش بالامتداد.
-
-**البيانات الحساسة**
-- كل الأسرار في `.env` (مش في git): `SECRET_KEY`, `DATABASE_URL`, `FIELD_ENCRYPTION_KEY`, `OPENWA_API_KEY`, ...
-- باسورد الـSMTP ومفاتيح OpenWA في الداتابيز **متشفرة بـFernet** بمفتاح من الـenv.
-- الـPDFs **مش في مجلد media عام**. بتتقدم عن طريق view بتتأكد من الصلاحية (`FileResponse` في الـlocal، و`X-Accel-Redirect` من Nginx في الـproduction).
-- الـbackups متشفرة قبل ما تخرج من السيرفر.
-- الـlogs مبتسجلش باسوردات أو محتوى كامل للأرقام في مستوى INFO (masking: `+20106****030`).
-
-**التحديثات**
-- `pip-audit` في الـCI، تحديث أمني شهري لـDjango وOpenWA image.
+## 4.5 Security Checklist (زي البرق +)
+- كل اللي في البرق: HTTPS/HSTS، CSRF مع HTMX، CSP (scripts محلية)، Fernet للأسرار في الداتابيز، UFW، الخدمات على 127.0.0.1،
+  tenant isolation test لكل view.
+- **الرفع**: PDF/JPG/PNG بس، 15MB، التحقق بالمحتوى (Pillow / `%PDF` header)، أسماء ملفات عشوائية.
+- **الـwebhook**: HMAC زي البرق، والرسايل الواردة بتتخزن كنص بس (مفيش تنفيذ لأي محتوى).
+- **Rate limit** على البحث عن المرضى (منع scraping بالأرقام): 120 طلب/دقيقة/مستخدم.
+- **الـscheduler**: advisory lock (مفيش نسختين). كل dispatch بيتحقق من `organization` للصف.

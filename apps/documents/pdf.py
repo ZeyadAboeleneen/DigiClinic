@@ -1,20 +1,14 @@
-"""Quotation PDF rendering: Django template → HTML → headless Chromium (Playwright) → PDF.
-
-Fonts (Cairo/Poppins) and the logo are inlined as data URIs, so rendering never touches the network.
+"""Shared Chromium/Playwright PDF rendering: fonts are inlined as data URIs, so rendering never
+touches the network. The prescription-specific rendering (Phase 7) builds on top of this.
 """
 
 import base64
 import logging
 import mimetypes
 from functools import cache
-from itertools import groupby
 from pathlib import Path
 
 from django.conf import settings
-from django.core.files.base import ContentFile
-from django.template.loader import render_to_string
-from django.utils import timezone
-from django.utils.html import escape
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +41,7 @@ def font_css() -> str:
     return "\n".join(rules)
 
 
-def _logo_uri(org_settings) -> str:
+def logo_uri(org_settings) -> str:
     if not org_settings or not org_settings.logo:
         return ""
     try:
@@ -56,66 +50,6 @@ def _logo_uri(org_settings) -> str:
     except FileNotFoundError:
         return ""
     return _data_uri(data, mimetypes.guess_type(org_settings.logo.name)[0] or "image/png")
-
-
-def _recipient_lines(q):
-    if q.customer_snapshot.get("recipient_lines"):
-        return [tuple(x) for x in q.customer_snapshot["recipient_lines"]]
-    return q.customer.recipient_lines() if q.customer_id else []
-
-
-def _attention(q):
-    c = q.contact_snapshot or {}
-    if not c and q.contact_id:
-        ct = q.contact
-        c = {"salutation": ct.salutation, "name": ct.name, "job_title": ct.job_title, "department": ct.department}
-    if not c:
-        return ""
-    name = " ".join(x for x in (c.get("salutation"), c.get("name")) if x)
-    extra = c.get("job_title") or c.get("department")
-    return f"{name} — {extra}" if extra else name
-
-
-def build_context(q, *, draft: bool):
-    org = q.organization
-    s = getattr(org, "settings", None)
-    items = list(q.items.all())
-    for n, it in enumerate(items, start=1):
-        it.no = n
-    sections = [(name, list(rows)) for name, rows in groupby(items, key=lambda i: i.category_name)]
-    return {
-        "q": q,
-        "org": org,
-        "s": s,
-        "font_css": font_css(),
-        "logo": _logo_uri(s),
-        "draft": draft,
-        "number": q.display_number if (q.number and not draft) else "",
-        "recipient_lines": _recipient_lines(q),
-        "attention": _attention(q),
-        "sections": sections,
-        "primary": (s.primary_color if s else "#AE171C"),
-        "section_bg": (s.section_row_color if s else "#FBECEC"),
-    }
-
-
-def render_html(q, *, draft: bool) -> str:
-    return render_to_string("pdf/quotation.html", build_context(q, draft=draft))
-
-
-def _footer_html(q) -> str:
-    org = q.organization
-    s = getattr(org, "settings", None)
-    phones = " / ".join(s.phones) if s and s.phones else ""
-    left = escape(" • ".join(x for x in (org.name_ar, phones, org.name_en.upper()) if x))
-    return (
-        '<div style="width:100%;font-size:7.5px;color:#888;padding:0 12mm;direction:rtl;'
-        "font-family:'Segoe UI',Tahoma,Arial,sans-serif;display:flex;justify-content:space-between;"
-        'border-top:0.5px solid #ddd;padding-top:4px;">'
-        f"<span>{left}</span>"
-        '<span>صفحة <span class="pageNumber"></span> من <span class="totalPages"></span></span>'
-        "</div>"
-    )
 
 
 class PdfRenderError(RuntimeError):
@@ -161,7 +95,7 @@ def _launch(p):
     )
 
 
-def html_to_pdf(html: str, footer_html: str = "") -> bytes:
+def html_to_pdf(html: str, footer_html: str = "", *, page_format: str = "A4") -> bytes:
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
@@ -171,7 +105,7 @@ def html_to_pdf(html: str, footer_html: str = "") -> bytes:
             page.set_content(html, wait_until="load")
             page.evaluate("document.fonts.ready")
             return page.pdf(
-                format="A4",
+                format=page_format,
                 print_background=True,
                 display_header_footer=bool(footer_html),
                 header_template="<div></div>",
@@ -180,35 +114,3 @@ def html_to_pdf(html: str, footer_html: str = "") -> bytes:
             )
         finally:
             browser.close()
-
-
-def render_pdf(q, *, draft: bool) -> bytes:
-    return html_to_pdf(render_html(q, draft=draft), _footer_html(q))
-
-
-def download_name(q) -> str:
-    customer = q.customer_snapshot.get("name") or (q.customer.name if q.customer_id else "")
-    number = (q.display_number or f"draft-{q.pk}").replace("/", "-")
-    return f"عرض أسعار - {customer} - {number}.pdf"
-
-
-def generate_final_pdf(q) -> None:
-    """Render and store the immutable final PDF of an issued quotation."""
-    data = render_pdf(q, draft=False)
-    name = f"{q.display_number.replace('/', '-')}.pdf"
-    if q.pdf_file:
-        q.pdf_file.delete(save=False)
-    q.pdf_file.save(name, ContentFile(data), save=False)
-    q.pdf_generated_at = timezone.now()
-    q.save(update_fields=["pdf_file", "pdf_generated_at", "updated_at"])
-
-
-def generate_final_pdf_safely(quotation_id: int) -> None:
-    from apps.quotations.models import Quotation
-
-    q = Quotation.objects.select_related("organization__settings", "customer", "contact").get(pk=quotation_id)
-    try:
-        generate_final_pdf(q)
-    except Exception:
-        # The quotation is already issued; the PDF is regenerated on first download.
-        logger.exception("PDF generation failed for quotation %s", quotation_id)

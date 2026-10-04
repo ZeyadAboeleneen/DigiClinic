@@ -8,7 +8,7 @@
     <button type="button" class="btn-ghost -ms-2 px-2" @click="open = true" aria-label="{% translate 'القائمة' %}">
       <svg class="size-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
     </button>
-    <span class="font-bold">{% translate "مرسول البرق" %}</span>
+    <span class="font-bold">DigiClinic</span>
     <span class="w-8"></span>
   </header>
 
@@ -23,43 +23,16 @@
         <img src="{% url 'organizations:logo' %}" alt="" class="size-10 rounded-lg object-contain">
       {% endif %}
       <div class="min-w-0">
-        <div class="truncate text-sm font-bold">{% translate "مرسول البرق" %}</div>
+        <div class="truncate text-sm font-bold">DigiClinic</div>
         <div class="truncate text-xs text-stone-500">{{ current_org.name_ar }}</div>
       </div>
     </div>
 
     <nav class="flex-1 space-y-1 overflow-y-auto p-3">
-      {% if can.quotation_create %}
-        <form method="post" action="{% url 'quotations:new' %}" class="mb-3">
-          {% csrf_token %}
-          <button class="btn-primary w-full">
-            <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
-            {% translate "عرض سعر جديد" %}
-          </button>
-        </form>
-      {% endif %}
       <a href="{% url 'dashboard:home' %}" class="nav-link {% if url_name == 'dashboard:home' %}active{% endif %}">
         <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m3 11 9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
         {% translate "الرئيسية" %}
       </a>
-      {% if can.quotation_view %}
-      <a href="{% url 'quotations:list' %}" class="nav-link {% if url_name|slice:':11' == 'quotations:' %}active{% endif %}">
-        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6"/></svg>
-        {% translate "العروض" %}
-      </a>
-      {% endif %}
-      {% if can.customer_view %}
-      <a href="{% url 'customers:list' %}" class="nav-link {% if url_name|slice:':10' == 'customers:' %}active{% endif %}">
-        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4 21V5l8-2v18M12 7h8v14M8 8h.01M8 12h.01M8 16h.01M16 11h.01M16 15h.01"/></svg>
-        {% translate "العملاء" %}
-      </a>
-      {% endif %}
-      {% if can.product_view %}
-      <a href="{% url 'catalog:index' %}" class="nav-link {% if url_name|slice:':8' == 'catalog:' %}active{% endif %}">
-        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 8-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/></svg>
-        {% translate "المنتجات" %}
-      </a>
-      {% endif %}
       {% if can.user_manage or can.settings_manage or can.audit_view %}
       <div class="px-3 pb-1 pt-4 text-xs font-semibold text-stone-400">{% translate "الإدارة" %}</div>
       {% endif %}

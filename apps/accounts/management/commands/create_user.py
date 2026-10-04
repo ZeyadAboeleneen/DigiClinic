@@ -12,7 +12,7 @@ from apps.organizations.models import Membership, Organization, Role
 class Command(BaseCommand):
     help = (
         "Create (or update) a user and their membership from the terminal.\n"
-        "  python manage.py create_user --email a@b.com --name 'Name' --role owner [--org albarq]\n"
+        "  python manage.py create_user --email a@b.com --name 'Name' --role owner [--org demo-clinic]\n"
         "The password is asked interactively unless --password is given."
     )
 
@@ -20,7 +20,7 @@ class Command(BaseCommand):
         parser.add_argument("--email", required=True)
         parser.add_argument("--name", required=True)
         parser.add_argument("--role", required=True, choices=Role.values)
-        parser.add_argument("--org", default="albarq")
+        parser.add_argument("--org", default="demo-clinic")
         parser.add_argument("--password", help="Avoid on shared machines; omit to be prompted.")
         parser.add_argument("--superuser", action="store_true", help="Also grant Django admin access.")
 

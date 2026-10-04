@@ -1,7 +1,8 @@
 """Local PostgreSQL 16 for development (no Docker).
 
 Uses the PostgreSQL binaries bundled with the `pgserver` package. Data lives outside
-OneDrive in %LOCALAPPDATA%/marsool-albarq/pgdata so sync never touches live DB files.
+OneDrive in %LOCALAPPDATA%/digiclinic/pgdata so sync never touches live DB files.
+Separate port/data dir from Marsool Al-Barq so both can run on the same machine.
 
     python scripts/devdb.py start | stop | status
 """
@@ -14,10 +15,10 @@ from pathlib import Path
 
 import pgserver
 
-PORT = int(os.environ.get("DEV_DB_PORT", "54329"))
-DB_NAME = "marsool"
+PORT = int(os.environ.get("DEV_DB_PORT", "54339"))
+DB_NAME = "digiclinic"
 BIN = Path(pgserver.__file__).parent / "pginstall" / "bin"
-DATA_ROOT = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "marsool-albarq"
+DATA_ROOT = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "digiclinic"
 PGDATA = DATA_ROOT / "pgdata"
 LOGFILE = DATA_ROOT / "postgres.log"
 

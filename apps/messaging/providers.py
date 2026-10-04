@@ -7,7 +7,6 @@ from typing import Protocol
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives, get_connection
-from django.template.loader import render_to_string
 
 
 @dataclass
@@ -58,7 +57,7 @@ class SmtpEmailProvider:
             to=[to],
             reply_to=[reply_to] if reply_to else None,
             connection=connection,
-            headers={"Message-ID": make_msgid(domain="marsool.local")},
+            headers={"Message-ID": make_msgid(domain="digiclinic.local")},
         )
         if html:
             msg.attach_alternative(html, "text/html")
@@ -66,46 +65,12 @@ class SmtpEmailProvider:
             msg.attach(*attachment)
         return msg
 
-    def send(self, delivery, pdf_bytes: bytes, pdf_name: str) -> ProviderResult:
-        q = delivery.quotation
-        html = render_to_string(
-            "messaging/email/quotation.html",
-            {
-                "body": delivery.message_text,
-                "q": q,
-                "org": q.organization,
-                "s": getattr(q.organization, "settings", None),
-            },
-        )
-        reply_to = delivery.sent_by.email if delivery.sent_by_id else None
-        try:
-            with self._connection() as conn:
-                msg = self.build_message(
-                    to=delivery.recipient,
-                    subject=delivery.subject,
-                    body=delivery.message_text,
-                    reply_to=reply_to,
-                    html=html,
-                    attachment=(pdf_name, pdf_bytes, "application/pdf"),
-                    connection=conn,
-                )
-                msg.send()
-            return ProviderResult(ok=True, provider_message_id=msg.extra_headers.get("Message-ID", ""))
-        except smtplib.SMTPAuthenticationError:
-            return ProviderResult(ok=False, error="الإيميل أو كلمة مرور التطبيق غلط (SMTP authentication failed).")
-        except smtplib.SMTPRecipientsRefused:
-            return ProviderResult(ok=False, error="السيرفر رفض عنوان المستلم.")
-        except (smtplib.SMTPServerDisconnected, smtplib.SMTPConnectError, TimeoutError, OSError) as e:
-            return ProviderResult(ok=False, error=f"مشكلة اتصال بسيرفر الإيميل: {e}", temporary=True)
-        except smtplib.SMTPException as e:
-            return ProviderResult(ok=False, error=f"خطأ من سيرفر الإيميل: {e}", temporary=True)
-
     def send_test(self, to: str) -> ProviderResult:
         try:
             with self._connection() as conn:
                 self.build_message(
                     to=to,
-                    subject="رسالة تجربة من مرسول البرق",
+                    subject="رسالة تجربة من DigiClinic",
                     body="لو الرسالة دي وصلتك، يبقى إعدادات الإيميل شغالة ✓",
                     connection=conn,
                 ).send()

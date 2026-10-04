@@ -1,5 +1,5 @@
 @echo off
-REM Marsool Al-Barq - start the system locally (no Docker needed)
+REM DigiClinic - start the system locally (no Docker needed)
 cd /d "%~dp0"
 set TAILWINDCSS_VERSION=v4.3.3
 set PYTHONUTF8=1
@@ -14,15 +14,14 @@ echo [3/6] Building styles...
 echo [4/6] Updating database...
 .venv\Scripts\python manage.py migrate --noinput || goto :error
 .venv\Scripts\python manage.py seed_org || goto :error
-.venv\Scripts\python manage.py expire_quotations
 echo [5/6] Starting WhatsApp gateway...
 call :whatsapp
 echo.
-echo   [6/6] Marsool Al-Barq is running:  http://127.0.0.1:8000
+echo   [6/6] DigiClinic is running:  http://127.0.0.1:8010
 echo   Keep this window open. Press Ctrl+C to stop.
 echo.
-start "" http://127.0.0.1:8000
-.venv\Scripts\python manage.py runserver 127.0.0.1:8000
+start "" http://127.0.0.1:8010
+.venv\Scripts\python manage.py runserver 127.0.0.1:8010
 goto :eof
 
 :whatsapp
@@ -34,7 +33,7 @@ if not defined NODE_EXE (
   goto :eof
 )
 for %%D in ("%NODE_EXE%") do set "PATH=%%~dpD;%PATH%"
-curl -s -o nul http://127.0.0.1:3310/health && (
+curl -s -o nul http://127.0.0.1:3320/health && (
   echo   WhatsApp gateway already running.
   goto :eof
 )
@@ -44,7 +43,7 @@ if not exist whatsapp-gateway\node_modules (
   call npm install --no-audit --no-fund
   popd
 )
-start "Marsool WhatsApp" /min "%NODE_EXE%" whatsapp-gateway\server.js
+start "DigiClinic WhatsApp" /min "%NODE_EXE%" whatsapp-gateway\server.js
 echo   WhatsApp gateway started.
 goto :eof
 

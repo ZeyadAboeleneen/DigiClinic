@@ -1,90 +1,97 @@
 # 01 — System Architecture
 
-## 1.1 ليه Django + HTMX (مش Next.js)
+## 1.1 ليه نبني على مرسول البرق
 
-- نظام داخلي، مستخدمين قليلين، ومطوّر واحد بيبني ويصيّن → codebase واحد أهم من SPA.
-- HTMX بيدّي إحساس SPA في الأماكن المهمة (بحث المنتجات، تحميل الـcontacts، الـpreview) من غير API layer منفصل.
-- Django Admin متاح كـ"emergency panel" للـsuperuser بس، والواجهة اليومية مبنية custom.
-- لو احتجنا mobile app أو public API بعدين: نضيف Django REST Framework endpoints جنب الـviews من غير ما نعيد البناء.
+مرسول البرق فيه أصعب الأجزاء اللي محتاجينها، ومتجربة:
+multi-tenancy، auth بالدعوات والأدوار، audit، تشفير الإعدادات، PDF عربي بـChromium، بوابة واتساب محلية
+بـacks (✓✓)، SMTP بـretries، قوالب رسايل بمتغيرات، بحث عربي متطبّع، تشغيل كامل على Windows من غير Docker.
+الجديد في DigiClinic هو **منطق العيادة** (المواعيد، الطابور، الملف الطبي، الروشتة) و**محرك جدولة الرسايل**.
 
-## 1.2 شكل النظام
+## 1.2 خريطة الـReuse
 
-```
-                 Internet
-                    │ HTTPS 443
-          ┌─────────▼──────────┐
-          │  Nginx (الموجود)    │  ← مفيش أي تعديل على البورتات
-          └─────────┬──────────┘
-                    │ proxy_pass 127.0.0.1:8100
-┌───────────────────▼────────────────────────────────┐
-│ docker compose (project: albarq)                   │
-│                                                    │
-│  web      Django + Gunicorn        127.0.0.1:8100  │
-│  worker   Celery (PDF, sending, backups)           │
-│  beat     Celery beat (expiry, reminders)          │
-│  db       PostgreSQL 16            internal only   │
-│  redis    Redis 7                  internal only   │
-│  openwa   OpenWA gateway           internal only   │
-│                                                    │
-│  volumes: pgdata, media, openwa-data               │
-└────────────────────────────────────────────────────┘
-```
+| App في البرق | في DigiClinic | التغيير |
+|---|---|---|
+| `core` | يفضل | + `apps/core/timeutils.py` (تحويلات القاهرة ↔ UTC)، + `normalize_ar` يتنقل هنا لو مش موجود |
+| `organizations` | يفضل | `OrganizationSettings` تتنضف من حقول العروض وتتحول لبيانات العيادة (02) |
+| `accounts` | يفضل | الأدوار الجديدة: `owner`, `admin`, `doctor`, `reception`, `viewer` + مصفوفة صلاحيات جديدة (04) |
+| `audit` | يفضل | + أحداث العيادة + تسجيل فتح الملف الطبي |
+| `messaging` | يفضل | `Delivery` تتفك من `Quotation` وتتربط بـ`ScheduledMessage`. الـproviders والبوابة زي ما هما |
+| `documents` | يفضل | `pdf.py` (Chromium) يفضل، والـtemplates تبقى روشتة بدل عرض سعر |
+| `customers` | **يتشال** | المنطق المفيد (الأرقام E.164، البحث المتطبّع، الـforms) يتنقل لـ`patients` |
+| `catalog` | **يتشال** | نمط الترتيب بالسحب والـimport يتنقل لكتالوج الأدوية في `prescriptions` |
+| `quotations` | **يتشال** | نمط الـbuilder بالـHTMX partials يتنقل لشاشة الروشتة. الـsnapshots والقفل والـrevisions نفس الفكرة |
+| `dashboard` | يفضل | محتواه يتغير (إحصائيات العيادة) |
 
-- الـOpenWA dashboard **مش مكشوف للإنترنت**. Django هو الوحيد اللي بيكلمه على الشبكة الداخلية بـAPI key.
-- الـwebhooks من OpenWA لـDjango بتمشي على الشبكة الداخلية (`http://web:8000/integrations/whatsapp/webhook/`) مع HMAC secret.
-
-## 1.3 هيكل المشروع
+## 1.3 الـApps الجديدة
 
 ```
-albarq/
-├── config/                 settings (base/dev/prod), urls, celery, wsgi
-├── apps/
-│   ├── core/               BaseModel, TenantScopedModel, middleware, utils
-│   ├── organizations/      Organization, Membership, OrgSettings, Branding
-│   ├── accounts/           User, login, roles/permissions
-│   ├── customers/          Customer, Contact, ContactChannel
-│   ├── catalog/            Category, Unit, Product
-│   ├── quotations/         Quotation, QuotationItem, numbering, builder views
-│   ├── documents/          PDF rendering (WeasyPrint templates)
-│   ├── messaging/          Email + WhatsApp providers, Delivery, templates
-│   ├── audit/              AuditEvent
-│   └── dashboard/          home stats
-├── templates/              base.html, partials/ (HTMX fragments), pdf/
-├── static/                 tailwind output, alpine, htmx, fonts (Cairo, Poppins)
-├── seed/                   products.csv, brand.json
-├── deploy/                 docker-compose.yml, nginx.conf.example, backup.sh
-├── tests/
-└── manage.py
+apps/
+├── core/           (موجود)
+├── organizations/  (موجود) بيانات العيادة والبراندنج
+├── accounts/       (موجود) المستخدمين والأدوار
+├── audit/          (موجود)
+├── messaging/      (موجود) providers + بوابة الواتساب + Delivery
+├── documents/      (موجود) Chromium PDF
+├── doctors/        Doctor, WorkingPeriod, ScheduleException, VisitType
+├── patients/       Patient, Allergy, ChronicCondition, PatientFieldDefinition, sequence رقم الملف
+├── scheduling/     Appointment, AppointmentEvent, DayLedger, services: availability/book/reschedule/cancel/no-show
+├── notifications/  NotificationSettings, NotificationTemplate, ScheduledMessage, dispatcher, run_scheduler
+├── clinical/       Visit (الكشف)، Vitals، Attachment
+├── prescriptions/  Drug, DosePhrase, Prescription, PrescriptionItem, PrescriptionTemplate
+├── billing/        Payment + التقرير اليومي
+├── reception/      views شاشة الاستقبال (من غير models)
+├── doctor_desk/    views شاشة الدكتور (من غير models)
+└── dashboard/      (موجود) إحصائيات
 ```
 
-## 1.4 Multi-Tenancy (مهم من اليوم الأول)
+قاعدة: **كل business logic في `services.py` جوه كل app**، والـviews رفيعة (زي البرق). الـservices هي اللي بتتختبر.
 
-- **الـTenant اسمه `Organization`** (مش Company عشان ميتلخبطش مع العميل اللي نوعه "شركة").
-- كل model تشغيلي بيورث من `TenantScopedModel` اللي فيه `organization = FK(Organization)`.
-- `CurrentOrganizationMiddleware` بيحدد `request.organization` من الـMembership بتاعة المستخدم.
-- كل queryset في الـviews بيعدّي على `Model.objects.for_org(request.organization)`. **ممنوع** `Model.objects.all()` في أي view.
-- Test إجباري: مستخدم من org A ميقدرش يشوف أو يعدّل أي حاجة من org B (بالـID المباشر في الـURL).
-- البراندنج (لوجو، ألوان، بيانات التواصل، الشروط الافتراضية) جزء من بيانات الـOrganization، مش hardcoded. البرق = Organization #1.
-- حاليًا: org واحدة، مفيش شاشة تسجيل شركات. التوسع = إضافة org من الـsuperuser admin.
+## 1.4 شكل النظام (Runtime)
 
-## 1.5 Stack Versions
+```
+Browser (السكرتيرة / الدكتور)
+   │  HTMX (polling كل 5 ثواني لشاشات الاستقبال والدكتور)
+   ▼
+Django (runserver local / gunicorn على السيرفر)
+   │                               ▲
+   │ ScheduledMessage (outbox)     │ webhook (acks + الرسايل الواردة)
+   ▼                               │
+run_scheduler  ──send──►  whatsapp-gateway (Node, 127.0.0.1)  ──► WhatsApp
+   │          ──send──►  SMTP
+   └─ jobs دورية: إرسال المستحق، الغياب التلقائي، تنظيف
+PostgreSQL 16
+```
 
-| Component | Version |
-|---|---|
-| Python | 3.12 |
-| Django | 5.2 LTS |
-| PostgreSQL | 16 |
-| Redis | 7 |
-| Celery | 5.x |
-| HTMX | 2.x |
-| Alpine.js | 3.x |
-| WeasyPrint | latest stable |
-| OpenWA | latest release (pinned image tag) |
+- **مفيش Celery ولا Redis** في النسخة الأولى. `manage.py run_scheduler` عملية واحدة بتصحى كل 20 ثانية:
+  بتبعت الرسايل المستحقة (`SELECT ... FOR UPDATE SKIP LOCKED`)، وبتشغّل jobs الغياب. نفس الأمر local وعلى السيرفر
+  (container لوحده). ده أبسط وأسهل في الصيانة، وكفاية جدًا لحجم عيادات.
+- "ابعت دلوقتي" (زي الروشتة أو تأكيد الحجز): بيتعمل `ScheduledMessage` بـ`send_at=now` + بيتعمل kick فوري
+  في thread (زي البرق) عشان ما يستناش الـ20 ثانية. لو الـthread فشل، الـscheduler بيلقطها.
+- الـrealtime بين الاستقبال والدكتور: **HTMX polling** (كل 5 ثواني، والـresponse بيرجع `204` لو مفيش تغيير
+  باستخدام `ETag`/version رقم). مفيش WebSockets ولا Channels.
 
-## 1.6 Python Packages الأساسية
+## 1.5 Multi-Tenancy (زي البرق بالظبط)
 
-`django`, `psycopg[binary]`, `django-environ`, `celery`, `redis`, `django-htmx`,
-`weasyprint`, `phonenumbers`, `django-phonenumber-field`, `argon2-cffi`,
-`django-axes`, `django-simple-history`, `cryptography`, `httpx`,
-`pillow`, `gunicorn`, `whitenoise`, `sentry-sdk` (اختياري).
-Dev: `pytest-django`, `factory-boy`, `ruff`, `pre-commit`.
+- كل model تشغيلي بيورث `TenantScopedModel`. الـviews بتستخدم `.for_org(request.organization)`.
+- Test عزل إجباري لكل view جديدة (مستخدم من عيادة A ميشوفش أي حاجة من B بالـID في الـURL).
+- البراندنج والأرقام والعنوان ولينك الخريطة وبيانات الروشتة كلها من بيانات الـOrganization، مش hardcoded.
+
+## 1.6 تعايش DigiClinic مع مرسول البرق على نفس الجهاز
+
+المشروعين ممكن يشتغلوا على نفس اللابتوب، فـ**لازم ميتشاركوش أي حاجة**:
+
+| البند | مرسول البرق | DigiClinic |
+|---|---|---|
+| مجلد البيانات | `%LOCALAPPDATA%\marsool-albarq` | `%LOCALAPPDATA%\digiclinic` |
+| بورت PostgreSQL | 54329 | **54339** |
+| اسم الداتابيز | `marsool` | `digiclinic` |
+| بورت Django | 8000 | **8010** |
+| بورت بوابة الواتساب | 3310 | **3320** |
+| جلسة الواتساب | `.../marsool-albarq/whatsapp` | `.../digiclinic/whatsapp` |
+
+## 1.7 Packages جديدة
+
+- `rapidfuzz`: مطابقة أسماء الأدوية التقريبية (الإملاء الصوتي والبحث).
+- `python-dateutil`: لو احتجناه في حساب الأيام (اختياري).
+- الباقي موجود بالفعل في `pyproject.toml`.
+- `celery`/`redis`: **مش هيتضافوا** دلوقتي.

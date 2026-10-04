@@ -6,7 +6,7 @@ PASSWORD = "Strong-Pass-2026!"
 
 
 def test_login_and_logout(client, org_a, make_member):
-    make_member(org_a, "sales", email="sales@example.com")
+    make_member(org_a, "reception", email="sales@example.com")
     resp = client.post(reverse("accounts:login"), {"username": "sales@example.com", "password": PASSWORD})
     assert resp.status_code == 302
     assert resp.url == reverse("dashboard:home")
@@ -18,20 +18,20 @@ def test_login_and_logout(client, org_a, make_member):
 
 
 def test_login_email_is_case_insensitive(client, org_a, make_member):
-    make_member(org_a, "sales", email="sales@example.com")
+    make_member(org_a, "reception", email="sales@example.com")
     resp = client.post(reverse("accounts:login"), {"username": "Sales@Example.com", "password": PASSWORD})
     assert resp.status_code == 302
 
 
 def test_wrong_password_shows_error(client, org_a, make_member):
-    make_member(org_a, "sales", email="sales@example.com")
+    make_member(org_a, "reception", email="sales@example.com")
     resp = client.post(reverse("accounts:login"), {"username": "sales@example.com", "password": "wrong-pass"})
     assert resp.status_code == 200
     assert "غلط" in resp.content.decode()
 
 
 def test_lockout_after_five_failures(client, org_a, make_member):
-    make_member(org_a, "sales", email="sales@example.com")
+    make_member(org_a, "reception", email="sales@example.com")
     for _ in range(5):
         client.post(reverse("accounts:login"), {"username": "sales@example.com", "password": "nope"})
     resp = client.post(reverse("accounts:login"), {"username": "sales@example.com", "password": PASSWORD})
@@ -57,14 +57,14 @@ def test_user_without_membership_gets_403(client, db):
 
 
 def test_inactive_membership_gets_403(client, org_a, make_member):
-    user = make_member(org_a, "sales")
+    user = make_member(org_a, "reception")
     user.memberships.update(is_active=False)
     client.force_login(user)
     assert client.get(reverse("dashboard:home")).status_code == 403
 
 
 def test_lockout_counts_email_case_insensitively(client, org_a, make_member):
-    make_member(org_a, "sales", email="sales@example.com")
+    make_member(org_a, "reception", email="sales@example.com")
     for i in range(5):
         email = "SALES@example.com" if i % 2 else "sales@example.com"
         client.post(reverse("accounts:login"), {"username": email, "password": "nope"})

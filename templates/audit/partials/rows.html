@@ -4,10 +4,8 @@
   <ul class="divide-y divide-stone-100">
     {% for e in page.object_list %}
     <li class="flex flex-wrap items-start gap-x-3 gap-y-1 px-4 py-3 text-sm">
-      <span class="badge shrink-0 {% if e.action == 'delivery.failed' or e.action == 'auth.login_failed' %}bg-red-50 text-red-700{% elif e.group == 'delivery' %}bg-green-50 text-green-700{% elif e.group == 'quote' %}bg-blue-50 text-blue-700{% else %}bg-stone-100 text-stone-600{% endif %}">{{ e.action_label }}</span>
-      <span class="min-w-0 flex-1 break-words">
-        {% if e.target_type == "quotation" and e.target_id %}<a href="{% url 'quotations:detail' e.target_id %}" class="hover:text-brand">{{ e.summary }}</a>{% else %}{{ e.summary }}{% endif %}
-      </span>
+      <span class="badge shrink-0 {% if e.action == 'delivery.failed' or e.action == 'auth.login_failed' %}bg-red-50 text-red-700{% elif e.group == 'delivery' %}bg-green-50 text-green-700{% else %}bg-stone-100 text-stone-600{% endif %}">{{ e.action_label }}</span>
+      <span class="min-w-0 flex-1 break-words">{{ e.summary }}</span>
       <span class="w-full text-xs text-stone-500 sm:w-auto">
         {{ e.actor.full_name|default:_("النظام") }} · <span dir="ltr">{{ e.created_at|date:"Y/m/d H:i" }}</span>
       </span>

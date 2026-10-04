@@ -14,7 +14,10 @@
       {% include "partials/field.html" with field=org_form.name_ar %}
       {% include "partials/field.html" with field=org_form.name_en %}
     </div>
-    {% include "partials/field.html" with field=form.tagline_ar %}
+    <div class="grid gap-4 sm:grid-cols-2">
+      {% include "partials/field.html" with field=form.clinic_name_ar %}
+      {% include "partials/field.html" with field=form.clinic_name_en %}
+    </div>
     <div class="flex flex-col gap-4 sm:flex-row sm:items-end">
       {% if form.instance.logo %}<img src="{% url 'organizations:logo' %}" alt="" class="size-20 rounded-lg border border-stone-200 bg-white object-contain p-1">{% endif %}
       <div class="flex-1">{% include "partials/field.html" with field=form.logo %}</div>
@@ -25,11 +28,9 @@
     <h2 class="font-bold">{% translate "بيانات التواصل" %}</h2>
     <div class="grid gap-4 sm:grid-cols-2">
       {% include "partials/field.html" with field=form.phones_text %}
-      <div class="space-y-4">
-        {% include "partials/field.html" with field=form.email_display %}
-      </div>
+      {% include "partials/field.html" with field=form.map_link %}
       {% include "partials/field.html" with field=form.address_ar %}
-      {% include "partials/field.html" with field=form.address_en %}
+      {% include "partials/field.html" with field=form.working_hours_text %}
     </div>
   </section>
 
@@ -39,7 +40,6 @@
       {% include "partials/field.html" with field=form.primary_color %}
       {% include "partials/field.html" with field=form.dark_color %}
       {% include "partials/field.html" with field=form.neutral_color %}
-      {% include "partials/field.html" with field=form.section_row_color %}
     </div>
   </section>
 

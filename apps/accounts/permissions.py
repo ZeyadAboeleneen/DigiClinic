@@ -1,4 +1,8 @@
-"""Single source of truth for role → permission mapping (docs/plan/04-auth-permissions-security.md §4.2)."""
+"""Single source of truth for role → permission mapping (docs/plan/04-auth-permissions-security.md §4.3).
+
+Phase 0 only wires up the permissions the surviving apps (accounts/organizations/audit/messaging) need.
+Clinical, scheduling, patient and billing permissions from the matrix are added as those apps land.
+"""
 
 from functools import wraps
 
@@ -7,46 +11,29 @@ from django.core.exceptions import PermissionDenied
 
 from apps.organizations.models import Role
 
-VIEWER = {
-    "customer.view",
-    "product.view",
-    "quotation.view",
-}
-SALES = VIEWER | {
-    "quotation.create",
-    "quotation.send",
-    "customer.edit",
-    "quotation.cancel_own",
-}
-MANAGER = SALES | {
-    "product.edit",
-    "quotation.cancel",
-    "quotation.delete",
-    "customer.delete",
-    "audit.view",
-}
-ADMIN = MANAGER | {
+VIEWER = set()
+RECEPTION = VIEWER | set()
+DOCTOR = VIEWER | set()
+ADMIN = VIEWER | {
     "user.manage",
     "settings.manage",
+    "audit.view",
 }
-OWNER = ADMIN | {
-    "organization.delete",
-    "organization.transfer",
-}
+OWNER = ADMIN | DOCTOR | RECEPTION
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     Role.VIEWER: frozenset(VIEWER),
-    Role.SALES: frozenset(SALES),
-    Role.MANAGER: frozenset(MANAGER),
+    Role.RECEPTION: frozenset(RECEPTION),
+    Role.DOCTOR: frozenset(DOCTOR),
     Role.ADMIN: frozenset(ADMIN),
     Role.OWNER: frozenset(OWNER),
 }
-ALL_PERMISSIONS = frozenset(OWNER)
+ALL_PERMISSIONS = frozenset(ADMIN | DOCTOR | RECEPTION)
 
 # Roles an admin may assign. Only an owner can create or promote another owner.
 ASSIGNABLE_ROLES = {
-    Role.OWNER: [Role.OWNER, Role.ADMIN, Role.MANAGER, Role.SALES, Role.VIEWER],
-    Role.ADMIN: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.VIEWER],
+    Role.OWNER: [Role.OWNER, Role.ADMIN, Role.DOCTOR, Role.RECEPTION, Role.VIEWER],
+    Role.ADMIN: [Role.ADMIN, Role.DOCTOR, Role.RECEPTION, Role.VIEWER],
 }
 
 

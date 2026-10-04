@@ -68,13 +68,11 @@ PENDING_STATUSES = {DeliveryStatus.QUEUED, DeliveryStatus.SENDING}
 
 
 class Delivery(TenantScopedModel):
-    quotation = models.ForeignKey("quotations.Quotation", on_delete=models.CASCADE, related_name="deliveries")
+    """A generic outbound message record. Rebuilt in Phase 4 to be driven by `notifications.ScheduledMessage`."""
+
     channel = models.CharField(max_length=20, choices=ChannelKind.choices)
     recipient = models.CharField(max_length=254)
     recipient_name = models.CharField(max_length=150, blank=True)
-    contact_channel = models.ForeignKey(
-        "customers.ContactChannel", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
-    )
     subject = models.CharField(max_length=250, blank=True)
     message_text = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=DeliveryStatus.choices, default=DeliveryStatus.QUEUED)
@@ -82,7 +80,6 @@ class Delivery(TenantScopedModel):
     error_message = models.TextField(blank=True)
     attempts = models.PositiveSmallIntegerField(default=0)
     sent_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
-    review_confirmed = models.BooleanField(default=False)
     queued_at = models.DateTimeField(auto_now_add=True)
     sent_at = models.DateTimeField(null=True, blank=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
@@ -101,16 +98,3 @@ class Delivery(TenantScopedModel):
     @property
     def is_pending(self):
         return self.status in PENDING_STATUSES
-
-
-class QuotationReview(TenantScopedModel):
-    """Proof that a given user opened the final PDF of a quotation (the self-review gate before sending)."""
-
-    quotation = models.ForeignKey("quotations.Quotation", on_delete=models.CASCADE, related_name="reviews")
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
-    reviewed_at = models.DateTimeField(auto_now=True)
-
-    objects = OrgQuerySet.as_manager()
-
-    class Meta:
-        constraints = [models.UniqueConstraint(fields=["quotation", "user"], name="uniq_review_per_user")]

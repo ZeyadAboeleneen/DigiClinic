@@ -15,9 +15,9 @@ dependencies = [
     "whitenoise>=6.8",
     "phonenumbers>=9.0.40",
     "django-simple-history>=3.13.0",
-    "openpyxl>=3.1.5",
     "playwright>=1.63.0",
     "httpx>=0.28.1",
+    "rapidfuzz>=3.10",
 ]
 
 [dependency-groups]

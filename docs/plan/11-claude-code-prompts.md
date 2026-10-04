@@ -1,115 +1,106 @@
 # 11 — الرسائل اللي تتبعت لـClaude Code بالترتيب
 
-## قبل أي رسالة: تجهيز الفولدر (مرة واحدة، يدوي)
-
-```bash
-mkdir albarq && cd albarq
-git init
-mkdir -p docs
-# انسخي فولدر الخطة كله جوه docs واسميه plan:
-cp -r /path/to/albarq-quotation-system-plan docs/plan
-# انقلي CLAUDE.md لجذر المشروع (Claude Code بيقراه تلقائيًا من هنا):
-mv docs/plan/CLAUDE.md ./CLAUDE.md
-mkdir -p docs/plan/assets
-# حطي في docs/plan/assets:
-#   logo.svg أو logo.png (جودة عالية، خلفية شفافة)
-#   reference-quotation.pdf (عرض السعر الحالي)
-git add . && git commit -m "plan: initial"
-```
-
-المتطلبات على جهازك: Docker (Desktop أو Engine) + Git. مش محتاجة Python على الجهاز لأن كل حاجة جوه Docker.
+## قبل أي رسالة
+- الخطة دي موجودة في `docs/plan/` جوه فولدر DigiClinic. افتحي Claude Code في الفولدر ده.
+- **مهم:** `CLAUDE.md` اللي في جذر الفولدر لسه بتاع البرق. رسالة 1 بتخلي Claude Code يستبدله بـ`docs/plan/CLAUDE.md`.
+- لو مرسول البرق شغال على نفس الجهاز سيبيه — DigiClinic هيشتغل على بورتات تانية.
 
 ## قاعدة عامة
-- **ابدئي session جديدة (`/clear`) مع كل مرحلة.** الخطة وCLAUDE.md بيتقروا من جديد، والـcontext بيفضل نضيف.
-- بعد كل مرحلة: جرّبي بنفسك الحاجات اللي Claude Code هيقولك تتأكدي منها، وبعدين ابعتي الرسالة اللي بعدها.
-- لو فيه حاجة مش عاجباكي، قوليها في نفس الـsession قبل ما تنتقلي.
+- **`/clear` مع كل مرحلة جديدة.**
+- بعد كل مرحلة: جربي اللي Claude Code قالك عليه بإيدك، وبعدين الرسالة اللي بعدها.
+- ملاحظاتك قوليها في نفس الـsession قبل ما تنتقلي.
+- المراحل الكبيرة (3، 4، 6، 7) ممكن تاخد أكتر من session: `/clear` ثم
+  `كمّل Phase N من حيث وقفت. راجع git log وآخر commit الأول.`
 
 ---
 
 ### رسالة 1 — مراجعة الخطة (من غير كود)
 ```
-اقرأ CLAUDE.md وكل الملفات في docs/plan بالترتيب.
-متكتبش أي كود دلوقتي.
+الفولدر ده fork من مرسول البرق وهيبقى DigiClinic (نظام عيادات).
+اقرأ docs/plan/CLAUDE.md ثم docs/plan/README.md ثم باقي ملفات docs/plan بالترتيب اللي في الـREADME.
+تجاهل CLAUDE.md اللي في الجذر (بتاع البرق) — هيتستبدل في Phase 0.
+متكتبش أي كود.
 عايزاك:
 1) تلخصلي فهمك للنظام في 10 سطور.
-2) تقولي أي تناقض أو نقص في الخطة لازم يتحل قبل التنفيذ.
-3) تقترح هيكل الـrepo النهائي وملف docker-compose للـdev (شرح بس).
+2) تراجع الكود الحالي وتقولي إيه بالظبط اللي هيتشال وإيه اللي هيتعدل في Phase 0 (قائمة ملفات).
+3) أي تناقض أو نقص في الخطة لازم يتحل قبل التنفيذ.
 ```
 
-### رسالة 2 — Phase 1
+### رسالة 2 — Phase 0
 ```
-نفّذ Phase 1 (Foundation) من docs/plan/08-roadmap.md بالكامل.
-المستخدمين في البداية: أنا owner، و2 sales (اعمل command لإنشائهم من الـterminal).
-في الآخر: شغّل الـtests وruff، اعرضلي الـDoD نقطة نقطة، وقولي أجرب إيه بإيدي، واعمل commit.
+نفّذ Phase 0 (Fork & Cleanup) من docs/plan/08-roadmap.md.
+أول خطوة: انقل docs/plan/CLAUDE.md للجذر مكان القديم.
+اعمل migrations من الأول. خلي بالك من البورتات والمجلدات في 01-architecture §1.6.
+في الآخر: tests + ruff + الـDoD نقطة نقطة + أجرب إيه بإيدي + commit.
 ```
 
-### رسالة 3 — Phase 2
+### رسالة 3 — Phase 1
 ```
-نفّذ Phase 2 (Customers & Contacts).
-اعمل seed_demo فيه Travco كـgroup → Jaz Hotels كـchain بالـ3 مسؤولين اللي في الـDoD (أرقام وإيميلات وهمية).
+نفّذ Phase 1 (Clinic Setup & Doctor Schedule). اعتمد على 02 §2.2 و12 §1.
+ابدأ بـperiods_for والـtests بتاعتها قبل الشاشات.
+البيانات التجريبية من docs/plan/seed/clinic.json.
 في الآخر: tests + DoD + خطوات التجربة + commit.
 ```
 
-### ⚠️ قبل رسالة 4: كمّلي `docs/plan/seed/products.csv` بالـ30 منتج الناقصين بنفس الأعمدة
-`category_order,category,product_order,name_ar,unit,reference_price`
-
-### رسالة 4 — Phase 3
+### رسالة 4 — Phase 2
 ```
-نفّذ Phase 3 (Catalog). استورد المنتجات من docs/plan/seed/products.csv.
-الـimport لازم يكون upsert وميكررش لو اتشغل تاني.
-في الآخر: قولي عدد المنتجات والأقسام اللي اتستوردت + tests + DoD + commit.
+نفّذ Phase 2 (Patients). انقل المنطق المفيد من customers القديم (phones، البحث المتطبّع) بدل ما تكتبه من الأول
+— راجع git history لو محتاج الكود القديم.
+اعمل seed_demo بـ30 مريض وهمي، منهم 3 على نفس الرقم.
+في الآخر: tests + DoD + commit.
 ```
 
-### رسالة 5 — Phase 4 (أكبر مرحلة، ممكن تاخد أكتر من session)
+### رسالة 5 — Phase 3 (أهم مرحلة)
 ```
-نفّذ Phase 4 (Quotation Builder). ابدأ بالـmodels والترقيم الشهري والـtests بتاعته،
-وبعدين شاشة البناء بالتفصيل الموجود في docs/plan/03-modules-and-ux.md.
-افتكر: مفيش كميات ولا إجماليات، سعر الوحدة بس.
-قسّم الشغل لخطوات وقولي بعد كل خطوة كبيرة قبل ما تكمل.
-```
-لو الـsession طولت: `/clear` وبعدين: `كمّل Phase 4 من حيث وقفت. راجع git log وآخر commit الأول.`
-
-### رسالة 6 — Phase 5
-```
-نفّذ Phase 5 (PDF). المرجع الأساسي للشكل: docs/plan/assets/reference-quotation.pdf،
-والألوان والخطوط من docs/plan/seed/brand.json، واللوجو من docs/plan/assets.
-ولّد عرض تجربة بـ5 أصناف وعرض بكل المنتجات، وحطهم في tmp/ عشان أقارنهم بالمرجع.
-```
-**مهم:** افتحي الـPDFs وقارنيها بالمرجع بعينك، وابعتي ملاحظاتك قبل ما تكمّلي.
-
-### رسالة 7 — Phase 6
-```
-نفّذ Phase 6: شاشة Preview/Send مع بوابة المراجعة الإجبارية (docs/plan/06-sending-email-whatsapp.md)،
-وبعدين الإرسال بالإيميل.
-اكتب test إن طلب إرسال مباشر (POST) من غير مراجعة بيترفض.
-للتجربة هستخدم Gmail App Password، اعمل صفحة الإعدادات وزرار "ابعت إيميل تجربة".
+نفّذ Phase 3 (Booking Engine & Booking Screen) حسب docs/plan/12-booking-engine.md و03 §3.2–3.3.
+الترتيب: models → services بكل الـtests المذكورة في 12 (بما فيها test التزامن بالـthreads) → شاشة الحجز → التقويم.
+قولي بعد ما الـservices والـtests يخلصوا وقبل ما تبدأ الشاشات.
 ```
 
-### رسالة 8 — Phase 7
+### رسالة 6 — Phase 4
 ```
-نفّذ Phase 7 (WhatsApp عن طريق OpenWA). ضيف OpenWA للـdocker-compose بـimage version مثبتة
-وengine whatsapp-web.js، ومش مكشوف غير للشبكة الداخلية.
-صفحة الإعدادات تعرض الـQR عشان أربط رقم 01000967017.
-طبّق rate limit وfallback للإيميل زي الخطة.
+نفّذ Phase 4 (Notifications Engine) حسب docs/plan/06-notifications-engine.md.
+كل رسالة لازم تعدي على ScheduledMessage. ابدأ بالـservices والـdispatcher والـtests
+(التعديل، الإلغاء، الـfreshness guard، ساعات الهدوء، dedupe، لحاق الرسايل بعد توقف) قبل الشاشات.
+ضيف run_scheduler لـrun.bat. للتجربة هبعت لرقمي أنا بس.
 ```
-**وقت التجربة:** ابعتي لأرقامك أنتِ أو لزمايلك بس، مش لعملاء حقيقيين، لحد ما كل حاجة تبقى مستقرة.
+**وقت التجربة:** ابعتي لأرقامك أنتِ أو زمايلك بس.
 
-### رسالة 9 — Phase 8
+### رسالة 7 — Phase 5
 ```
-نفّذ Phase 8 (Dashboard, Audit, Polish). وبعدين راجع كل الشاشات على عرض موبايل (375px) وصلّح أي مشكلة.
+نفّذ Phase 5 (Reception Screen, No-show & Payments) حسب 03 §3.4 و12 §7–8 و06 §6.4.
+بعد ما تخلص: اعمل سكريبت محاكاة يوم (management command) يحجز 10 مرضى لليوم ويمشّي بعضهم ويغيّب واحد،
+عشان أجرب الشاشة بسرعة.
 ```
 
-### رسالة 10 — Phase 9
+### رسالة 8 — Phase 6
 ```
-نفّذ Phase 9 (Local Pilot): سكريبت backup/restore للداتابيز والملفات وجرّبه،
-وراجع الكود كله مراجعة أمنية ضد docs/plan/04-auth-permissions-security.md
-وطلعلي قائمة بأي حاجة ناقصة وصلّحها.
+نفّذ Phase 6 (Doctor Desk & Medical File) حسب 03 §3.5 و02 §2.6 و04 (الصلاحيات والـaudit وقفل الشاشة).
+اكتب test إن reception بتاخد 403 على كل URL طبي.
 ```
-بعدها: استخدمي النظام في عروض حقيقية كام يوم وابعتي الملاحظات في sessions منفصلة.
 
-### رسالة 11 — Phase 10 (بعد ما تقرري السيرفر والدومين)
+### رسالة 9 — Phase 7
 ```
-نفّذ Phase 10 (Production Deployment) على السيرفر [اسم/IP] والـsubdomain [الدومين].
-السيرفر عليه مشاريع شغالة: متلمسش بورت 80/443 ولا أي Nginx config تاني.
-اكتبلي الخطوات والأوامر اللي هتتنفذ على السيرفر وراجعها معايا قبل ما تنفذ أي حاجة.
+نفّذ Phase 7 (Prescriptions) حسب docs/plan/05-prescription-pdf.md و03 §3.6.
+استورد docs/plan/seed/drugs.csv. ولّد روشتة A5 بالوضعين + صفحة المعايرة وحطهم في tmp/ عشان أشوفهم.
+ركّز على النص المختلط عربي/إنجليزي (05 §5.3).
+```
+**مهم:** اطبعي الروشتة فعلًا على ورقة A5 قبل ما تكمّلي.
+
+### رسالة 10 — Phase 8
+```
+نفّذ Phase 8 (Voice Dictation) حسب docs/plan/13-voice-dictation.md.
+ابدأ بالمطابقة في الـbackend والـtests، وبعدين dictation.js.
+```
+
+### رسالة 11 — Phase 9
+```
+نفّذ Phase 9: الداشبورد والتقارير، مراجعة الموبايل، backup/restore وجربه، مراجعة أمنية ضد 04
+ومراجعة N+1 في شاشتي الاستقبال والدكتور. طلعلي قائمة بأي حاجة ناقصة وصلّحها.
+```
+
+### رسالة 12 — Phase 10 (بعد قرار الاستضافة)
+```
+نفّذ Phase 10 على [VPS: اسم/IP + subdomain] أو [جهاز العيادة: Windows].
+لو VPS: متلمسش 80/443 ولا configs المشاريع التانية. اكتبلي الأوامر وراجعها معايا قبل التنفيذ.
 ```

@@ -29,23 +29,22 @@ class CompanySettingsForm(forms.ModelForm):
         model = OrganizationSettings
         fields = [
             "logo",
-            "tagline_ar",
-            "email_display",
+            "clinic_name_ar",
+            "clinic_name_en",
             "address_ar",
-            "address_en",
+            "map_link",
+            "working_hours_text",
             "primary_color",
             "dark_color",
             "neutral_color",
-            "section_row_color",
         ]
         widgets = {
             "logo": forms.FileInput(attrs={"accept": "image/png,image/jpeg,image/webp"}),
-            "email_display": forms.EmailInput(attrs={"dir": "ltr"}),
-            "address_en": forms.TextInput(attrs={"dir": "ltr"}),
+            "clinic_name_en": forms.TextInput(attrs={"dir": "ltr"}),
+            "map_link": forms.URLInput(attrs={"dir": "ltr"}),
             "primary_color": forms.TextInput(attrs={"type": "color"}),
             "dark_color": forms.TextInput(attrs={"type": "color"}),
             "neutral_color": forms.TextInput(attrs={"type": "color"}),
-            "section_row_color": forms.TextInput(attrs={"type": "color"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -78,9 +77,6 @@ class CompanySettingsForm(forms.ModelForm):
 
     def clean_neutral_color(self):
         return self._clean_color("neutral_color")
-
-    def clean_section_row_color(self):
-        return self._clean_color("section_row_color")
 
     def save(self, commit=True):
         self.instance.phones = [p.strip() for p in self.cleaned_data["phones_text"].splitlines() if p.strip()]

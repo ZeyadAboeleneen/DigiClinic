@@ -38,7 +38,7 @@ class InviteForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.organization = organization
         self.fields["role"].choices = [(r.value, r.label) for r in allowed_roles]
-        self.fields["role"].initial = Role.SALES
+        self.fields["role"].initial = Role.RECEPTION
 
     def clean_email(self):
         email = self.cleaned_data["email"].lower()

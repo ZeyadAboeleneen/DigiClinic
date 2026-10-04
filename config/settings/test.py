@@ -2,7 +2,7 @@ import os
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production")
 os.environ.setdefault("FIELD_ENCRYPTION_KEY", "9X7OCXHJVDjSH7tYbRwxTMw2D2Oo9Vi5SCtgzuFm05Y=")
-os.environ.setdefault("DATABASE_URL", "postgres://postgres@127.0.0.1:54329/marsool")
+os.environ.setdefault("DATABASE_URL", "postgres://postgres@127.0.0.1:54339/digiclinic")
 # Tests always use the production password policy, whatever the local .env says.
 os.environ["PASSWORD_MIN_LENGTH"] = "10"
 os.environ["STRICT_PASSWORDS"] = "True"

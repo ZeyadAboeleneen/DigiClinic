@@ -8,21 +8,11 @@ ACTION_LABELS = {
     "auth.login": _("دخول"),
     "auth.logout": _("خروج"),
     "auth.login_failed": _("محاولة دخول فاشلة"),
-    "quote.finalized": _("إصدار عرض"),
-    "quote.revised": _("نسخة معدّلة"),
-    "quote.duplicated": _("نسخ عرض"),
-    "quote.status": _("تغيير حالة عرض"),
-    "quote.expired": _("انتهاء صلاحية عرض"),
-    "quote.draft_deleted": _("مسح عرض"),
-    "quote.reopened": _("تعديل عرض صادر"),
-    "customer.deleted": _("مسح عميل"),
-    "product.deleted": _("مسح صنف"),
     "delivery.queued": _("طلب إرسال"),
     "delivery.sent": _("اتبعت"),
     "delivery.failed": _("فشل الإرسال"),
     "settings.company": _("تعديل بيانات الشركة"),
     "settings.email": _("تعديل إعدادات الإيميل"),
-    "settings.templates": _("تعديل القوالب"),
     "whatsapp.connect": _("ربط واتساب"),
     "whatsapp.disconnect": _("فصل واتساب"),
     "user.invited": _("دعوة مستخدم"),
@@ -33,14 +23,11 @@ ACTION_LABELS = {
 }
 
 ACTION_GROUPS = {
-    "quote": _("العروض"),
     "delivery": _("الإرسال"),
     "auth": _("الدخول"),
     "user": _("المستخدمين"),
     "settings": _("الإعدادات"),
     "whatsapp": _("واتساب"),
-    "customer": _("العملاء"),
-    "product": _("المنتجات"),
 }
 
 
