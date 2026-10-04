@@ -94,7 +94,10 @@
         <label for="rx-next">{% translate "الزيارة الجاية" %}</label>
         <input id="rx-next" type="date" name="next_visit_date" value="{{ rx.next_visit_date|date:'Y-m-d' }}" hx-post="{% url 'prescriptions:fields' rx.pk %}" hx-trigger="change" hx-target="#rx-fields-status">
       </div>
-      {% if send_enabled %}
+      {% if send_enabled and not rx.patient.messaging_consent %}
+      <p class="rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-800">⚠ {% translate "الروشتة مش هتتبعت: المريض مش موافق على الرسايل." %}
+        {% if can.patient_edit_basic %}<a href="{% url 'patients:edit' rx.patient.pk %}" target="_blank" class="font-semibold underline">{% translate "عدّل الموافقة" %}</a>{% endif %}</p>
+      {% elif send_enabled %}
       <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="send_to_patient" value="1" {% if rx.send_to_patient %}checked{% endif %}
              hx-post="{% url 'prescriptions:fields' rx.pk %}" hx-trigger="change" hx-target="#rx-fields-status" hx-vals='js:{send_to_patient: event.target.checked ? "1" : "0"}'> {% translate "وابعتها للمريض بعد الكشف" %}</label>
       {% endif %}

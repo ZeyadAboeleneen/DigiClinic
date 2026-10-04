@@ -98,7 +98,7 @@ def _blocking_reason(ns, template, patient, recipient) -> str:
     if template is not None and not template.is_enabled:
         return _("القالب مقفول")
     if not patient.messaging_consent:
-        return _("مفيش موافقة")
+        return _(CONSENT_REASON)
     if not recipient:
         return _("مفيش رقم/إيميل للقناة دي")
     return ""
@@ -328,6 +328,34 @@ def create_test_message(org, *, channel, recipient, body, subject="", by=None):
         dedupe_key=f"test:{uuid.uuid4().hex}",
         created_by=by,
     )
+
+
+CONSENT_REASON = "مفيش موافقة"
+
+
+def on_consent_granted(patient, *, now=None):
+    """The patient just agreed to messages: put back the ones that were skipped *only* for missing consent and still
+    make sense — confirmations/reschedules/no-show notes and prescriptions from the last day, and every future
+    reminder. The dispatcher re-checks everything at send time (freshness, quiet hours), so nothing stale goes out."""
+    now = now or timezone.now()
+    rows = ScheduledMessage.objects.filter(
+        patient=patient, status=MessageStatus.SKIPPED, status_reason=_(CONSENT_REASON)
+    )
+    revived = 0
+    for row in rows:
+        if row.event == Event.REMINDER:
+            if row.send_at < now:
+                continue
+            next_at = row.send_at
+        else:
+            if row.created_at < now - timedelta(days=1):
+                continue
+            next_at = max(row.send_at, now)
+        row.status, row.status_reason, row.attempts = MessageStatus.PENDING, "", 0
+        row.next_attempt_at = next_at
+        row.save(update_fields=["status", "status_reason", "attempts", "next_attempt_at", "updated_at"])
+        revived += 1
+    return revived
 
 
 def retry(row, *, by=None):

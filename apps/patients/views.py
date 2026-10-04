@@ -79,10 +79,17 @@ def patient_edit(request, pk):
     patient = _patient(request, pk)
     form = PatientForm(request.POST or None, instance=patient, org=request.organization)
     if request.method == "POST" and form.is_valid():
+        had_consent = Patient.objects.filter(pk=patient.pk, messaging_consent=True).exists()
         patient = form.save(commit=False)
         if patient.messaging_consent and not patient.consent_recorded_by_id:
             patient.consent_recorded_by = request.user
         patient.save()
+        if patient.messaging_consent and not had_consent:
+            from apps.notifications.services import on_consent_granted
+
+            revived = on_consent_granted(patient)
+            if revived:
+                messages.info(request, _("%(n)s رسالة كانت متوقفة عشان الموافقة رجعت تتبعت.") % {"n": revived})
         audit.log("patient.edited", request=request, target=patient, summary=patient.full_name)
         messages.success(request, _("البيانات اتحفظت."))
         return redirect("patients:detail", pk=patient.pk)

@@ -42,7 +42,7 @@
       {% if patient.email %}<div class="flex justify-between"><dt class="text-stone-500">{% translate "الإيميل" %}</dt><dd dir="ltr">{{ patient.email }}</dd></div>{% endif %}
       {% if patient.guardian_name %}<div class="flex justify-between"><dt class="text-stone-500">{% translate "ولي الأمر" %}</dt><dd>{{ patient.guardian_name }}</dd></div>{% endif %}
       {% if patient.address %}<div class="flex justify-between"><dt class="text-stone-500">{% translate "العنوان" %}</dt><dd>{{ patient.address }}</dd></div>{% endif %}
-      <div class="flex justify-between"><dt class="text-stone-500">{% translate "موافقة الرسايل" %}</dt><dd>{% if patient.messaging_consent %}{% translate "موافق" %}{% else %}{% translate "مش موافق" %}{% endif %}</dd></div>
+      <div class="flex justify-between"><dt class="text-stone-500">{% translate "موافقة الرسايل" %}</dt><dd>{% if patient.messaging_consent %}<span class="text-green-700">{% translate "موافق" %}</span>{% else %}<span class="font-semibold text-amber-700">{% translate "مش موافق — مفيش رسايل هتتبعتله" %}</span>{% endif %}</dd></div>
     </dl>
     {% if patient.notes %}<p class="mt-3 border-t border-stone-100 pt-3 text-sm text-stone-600">{{ patient.notes }}</p>{% endif %}
   </section>

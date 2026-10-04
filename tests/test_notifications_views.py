@@ -169,3 +169,67 @@ def test_inbound_message_is_stored_and_linked_to_patient(client, world):
 def test_dashboard_warns_when_scheduler_is_down(client, world):
     client.force_login(world["reception"])
     assert "محرك الرسايل واقف" in client.get(reverse("dashboard:home")).content.decode()
+
+
+def test_giving_consent_revives_messages_skipped_for_it(client, world, settings):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from apps.scheduling.models import Appointment
+
+    org = world["org"]
+    patient = Patient.objects.create(organization=org, full_name="رنا", phone="+201001234567", gender=Gender.FEMALE,
+                                     file_number=5)  # fmt: skip
+    now = timezone.now()
+
+    def row(event, send_at, key, reason="مفيش موافقة"):
+        return ScheduledMessage.objects.create(organization=org, patient=patient, event=event, channel="whatsapp",
+                                               recipient=patient.phone, send_at=send_at, status=MessageStatus.SKIPPED,
+                                               status_reason=reason, dedupe_key=key)  # fmt: skip
+
+    rx = row(Event.PRESCRIPTION, now - timedelta(hours=3), "a")
+    future_reminder = row(Event.REMINDER, now + timedelta(hours=5), "b")
+    past_reminder = row(Event.REMINDER, now - timedelta(hours=1), "c")
+    other_reason = row(Event.REMINDER, now + timedelta(hours=5), "d", reason="ساعات الهدوء")
+    assert not Appointment.objects.exists()
+
+    client.force_login(world["reception"])
+    resp = client.post(reverse("patients:edit", args=[patient.pk]), {
+        "full_name": patient.full_name, "gender": "female", "phone": "01001234567", "whatsapp_same_as_phone": "on",
+        "preferred_channel": "whatsapp", "messaging_consent": "on",
+    }, follow=True)  # fmt: skip
+    assert "2 رسالة كانت متوقفة" in resp.content.decode()
+    statuses = {r.dedupe_key: ScheduledMessage.objects.get(pk=r.pk).status for r in
+                (rx, future_reminder, past_reminder, other_reason)}  # fmt: skip
+    assert statuses == {"a": "pending", "b": "pending", "c": "skipped", "d": "skipped"}
+    assert ScheduledMessage.objects.get(pk=future_reminder.pk).next_attempt_at == future_reminder.send_at
+
+
+def test_prescription_builder_warns_when_patient_has_no_consent(client, world):
+    html = render_builder_warning(consent=False)
+    assert "مش موافق على الرسايل" in html
+    assert "مش موافق على الرسايل" not in render_builder_warning(consent=True)
+
+
+def render_builder_warning(*, consent):
+    from django.template.loader import render_to_string
+
+    class P:
+        pk = 1
+        messaging_consent = consent
+
+    class Rx:
+        pk = 1
+        patient = P()
+        is_editable = True
+        status = "draft"
+        display_number = ""
+        revision_of_id = None
+        visit_id = None
+        advice = ""
+        next_visit_date = None
+        send_to_patient = True
+
+    return render_to_string("prescriptions/partials/builder.html",
+                            {"rx": Rx(), "items": [], "send_enabled": True, "can": {}})  # fmt: skip
