@@ -1,0 +1,20 @@
+{% load i18n %}
+<section id="meta" class="card">
+  <form hx-post="{% url 'quotations:meta' q.pk %}" hx-trigger="change" hx-target="#meta" hx-swap="outerHTML" novalidate>
+    {% csrf_token %}
+    <div class="border-b border-stone-100 px-4 py-3 font-bold"><span class="text-brand">③</span> {% translate "التاريخ والشروط" %}</div>
+    <div class="grid gap-4 p-4 sm:grid-cols-2">
+      {% include "partials/field.html" with field=meta_form.issue_date %}
+      {% include "partials/field.html" with field=meta_form.valid_until %}
+    </div>
+    <details class="border-t border-stone-100" {% if meta_form.errors %}open{% endif %}>
+      <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-stone-600">{% translate "النص الافتتاحي والشروط والملاحظات (اختياري)" %}</summary>
+      <div class="space-y-4 px-4 pb-4">
+        {% include "partials/field.html" with field=meta_form.intro_text %}
+        {% include "partials/field.html" with field=meta_form.price_note %}
+        {% include "partials/field.html" with field=meta_form.terms_text %}
+        {% include "partials/field.html" with field=meta_form.internal_notes %}
+      </div>
+    </details>
+  </form>
+</section>

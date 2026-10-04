@@ -1,0 +1,45 @@
+{% load i18n %}
+<div id="item-{{ it.pk }}" x-data="{ edit: false }"
+     class="grid grid-cols-12 items-start gap-2 px-4 py-2 text-sm {% if not it.unit_price or error %}bg-amber-50/60{% endif %}">
+  <div class="col-span-12 min-w-0 sm:col-span-6">
+    <div x-show="!edit" class="flex items-start gap-1">
+      <span class="min-w-0 break-words font-semibold">{{ it.description }}</span>
+      {% if it.is_custom %}<span class="badge shrink-0 bg-stone-100 text-stone-500">{% translate "خاص" %}</span>{% endif %}
+      <button type="button" class="shrink-0 text-xs text-stone-400 hover:text-brand" @click="edit = true" title="{% translate 'تعديل الاسم في العرض ده بس' %}">✎</button>
+    </div>
+    <form x-show="edit" x-cloak class="flex gap-1" hx-post="{% url 'quotations:update_item' q.pk it.pk %}" hx-target="#item-{{ it.pk }}" hx-swap="outerHTML">
+      <input name="description" value="{{ it.description }}" class="min-w-0 flex-1 rounded border border-stone-300 px-2 py-1 text-sm">
+      <input name="unit_name" value="{{ it.unit_name }}" class="w-20 rounded border border-stone-300 px-2 py-1 text-sm">
+      <button class="btn-primary px-2 py-1 text-xs">✓</button>
+    </form>
+    {% if it.hint and it.hint.customer_price or it.hint and it.hint.last_price %}
+    <div class="mt-1 flex flex-wrap gap-1 text-xs">
+      {% if it.hint.customer_price %}
+      <button type="button" class="rounded bg-green-50 px-1.5 py-0.5 text-green-800 hover:bg-green-100"
+              onclick="const i=document.getElementById('price-{{ it.pk }}'); i.value='{{ it.hint.customer_price|floatformat:'-2u' }}'; i.dispatchEvent(new Event('change',{bubbles:true}))">
+        {% blocktranslate with p=it.hint.customer_price|floatformat:"-2u" d=it.hint.customer_date|date:"Y/m" %}آخر سعر للعميل: {{ p }} ({{ d }}){% endblocktranslate %}
+      </button>
+      {% endif %}
+      {% if it.hint.last_price %}
+      <button type="button" class="rounded bg-stone-100 px-1.5 py-0.5 text-stone-600 hover:bg-stone-200"
+              onclick="const i=document.getElementById('price-{{ it.pk }}'); i.value='{{ it.hint.last_price|floatformat:'-2u' }}'; i.dispatchEvent(new Event('change',{bubbles:true}))">
+        {% blocktranslate with p=it.hint.last_price|floatformat:"-2u" d=it.hint.last_date|date:"Y/m" %}آخر سعر عام: {{ p }} ({{ d }}){% endblocktranslate %}
+      </button>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  <div class="col-span-4 pt-1 text-stone-600 sm:col-span-2 sm:text-center">{{ it.unit_name }}</div>
+  <div class="col-span-6 sm:col-span-3">
+    <input id="price-{{ it.pk }}" name="unit_price" inputmode="decimal" dir="ltr" autocomplete="off"
+           value="{% if error %}{{ raw }}{% elif it.unit_price %}{{ it.unit_price|floatformat:'-2u' }}{% endif %}"
+           placeholder="{% translate 'السعر' %}"
+           hx-post="{% url 'quotations:update_item' q.pk it.pk %}" hx-trigger="change" hx-target="#item-{{ it.pk }}" hx-swap="outerHTML"
+           class="price-input w-full rounded-lg border bg-white px-3 py-1.5 text-end font-semibold focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 {% if error or not it.unit_price %}border-amber-400{% else %}border-stone-300{% endif %}">
+    {% if error %}<p class="mt-1 text-xs font-semibold text-red-700">{{ error }}</p>{% endif %}
+  </div>
+  <div class="col-span-2 pt-1 text-end sm:col-span-1">
+    <button type="button" class="text-stone-400 hover:text-red-700" aria-label="{% translate 'شيل الصنف' %}"
+            hx-post="{% url 'quotations:delete_item' q.pk it.pk %}">✕</button>
+  </div>
+</div>

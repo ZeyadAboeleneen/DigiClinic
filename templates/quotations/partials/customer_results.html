@@ -1,0 +1,17 @@
+{% load i18n %}
+{% if results %}
+<ul class="divide-y divide-stone-100 overflow-hidden rounded-lg border border-stone-200">
+  {% for c in results %}
+  <li>
+    <button type="button" class="flex w-full items-center gap-2 px-3 py-2 text-start text-sm hover:bg-sand"
+            hx-post="{% url 'quotations:set_customer' q.pk %}" hx-vals='{"customer": "{{ c.pk }}"}'>
+      <span class="font-semibold">{{ c.name }}</span>
+      <span class="text-xs text-stone-500">{{ c.get_kind_display }}{% if c.parent %} · {{ c.parent.name }}{% endif %}</span>
+      <span class="ms-auto font-mono text-xs text-stone-400" dir="ltr">{{ c.code }}</span>
+    </button>
+  </li>
+  {% endfor %}
+</ul>
+{% elif cq %}
+<p class="text-sm text-stone-500">{% blocktranslate %}مفيش عميل بالاسم «{{ cq }}».{% endblocktranslate %}</p>
+{% endif %}

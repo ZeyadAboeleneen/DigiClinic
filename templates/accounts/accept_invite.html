@@ -1,0 +1,20 @@
+{% extends "base_auth.html" %}
+{% load i18n %}
+{% block title %}{% translate "قبول الدعوة" %}{% endblock %}
+{% block card %}
+<div class="mb-4 text-sm text-stone-600">
+  {% blocktranslate with org=invitation.organization.name_ar role=invitation.get_role_display %}اتدعيت تنضم لـ<strong>{{ org }}</strong> بدور <strong>{{ role }}</strong>.{% endblocktranslate %}
+  <div class="mt-1 text-xs" dir="ltr">{{ invitation.email }}</div>
+</div>
+<form method="post" class="space-y-4" novalidate>
+  {% csrf_token %}
+  {% if existing %}
+    <p class="text-sm text-stone-600">{% translate "عندك حساب بالإيميل ده بالفعل. اقبل الدعوة وادخل بكلمة المرور بتاعتك." %}</p>
+  {% else %}
+    {% include "partials/field.html" with field=form.full_name %}
+    {% include "partials/field.html" with field=form.password1 %}
+    {% include "partials/field.html" with field=form.password2 %}
+  {% endif %}
+  <button type="submit" class="btn-primary w-full">{% translate "قبول الدعوة" %}</button>
+</form>
+{% endblock %}

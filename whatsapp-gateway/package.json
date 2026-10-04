@@ -1,0 +1,19 @@
+{
+  "name": "marsool-whatsapp-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local WhatsApp gateway for Marsool Al-Barq (whatsapp-web.js). Only Django talks to it.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "postinstall": "node patch-wwebjs.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "qrcode": "^1.5.4",
+    "whatsapp-web.js": "^1.26.0"
+  }
+}

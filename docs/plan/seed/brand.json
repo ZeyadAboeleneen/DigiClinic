@@ -1,0 +1,52 @@
+{
+  "organization": {
+    "slug": "albarq",
+    "name_ar": "البرق للتجارة والتوريدات",
+    "name_en": "Al-Barq for Trade and Supplies"
+  },
+  "colors": {
+    "primary": "#AE171C",
+    "dark": "#111111",
+    "neutral": "#F5F2EF",
+    "section_row_bg": "#FBECEC"
+  },
+  "fonts": {
+    "arabic": "Cairo",
+    "latin": "Poppins",
+    "weights": {
+      "heading": 700,
+      "subhead": 600,
+      "body": 400
+    }
+  },
+  "tagline_ar": "توريد مستلزمات الفنادق والمطاعم • أدوات النظافة • التعبئة والتغليف",
+  "phones": [
+    "0653451404",
+    "01060777030",
+    "01000967017"
+  ],
+  "email": "elbaark.company@gmail.com",
+  "address_ar": "البحر الأحمر — الغردقة — شارع المارينا السياحي",
+  "address_en": "Marina Boulevard, Hurghada, Red Sea",
+  "quotation": {
+    "number_prefix": "AB",
+    "number_format": "{code}-{year}/{month:02d}/{day:02d}",
+    "validity_days": 30,
+    "vat_rate": 14.0,
+    "prices_include_vat": false,
+    "intro_text": "يسعدنا أن نتقدم لسيادتكم بعرض أسعارنا للأصناف الموضحة أدناه، ونحن على أتم الاستعداد لتلبية احتياجاتكم بأفضل جودة وأسرع خدمة.",
+    "price_note": "الأسعار حسب اليوم وغير شاملة ضريبة القيمة المضافة",
+    "default_terms": [
+      "الأسعار المذكورة أعلاه غير شاملة ضريبة القيمة المضافة، وتضاف حسب النسبة المقررة قانونًا.",
+      "الأسعار سارية حسب سعر اليوم وقابلة للتغيير وفقًا لتغيرات السوق.",
+      "التوريد خلال 24 - 48 ساعة من تاريخ استلام أمر الشراء.",
+      "التوريد يتم لمقر المنشأة داخل نطاق الخدمة.",
+      "جميع الأصناف مطابقة للمواصفات المتفق عليها ويتم فحصها عند الاستلام."
+    ],
+    "number_reset": "per customer code per day (-2, -3 suffix)",
+    "show_quantities": false,
+    "validity_mode": "end_of_month"
+  },
+  "whatsapp_sender": "01000967017",
+  "_products_note": "products.csv has all 72 products, no reference prices"
+}

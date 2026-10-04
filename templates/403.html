@@ -1,0 +1,13 @@
+{% extends "base_page.html" %}
+{% load i18n %}
+{% block title %}{% translate "غير مسموح" %}{% endblock %}
+{% block body %}
+<div class="flex min-h-screen items-center justify-center px-4">
+  <div class="card max-w-md p-8 text-center">
+    <div class="text-5xl font-bold text-brand">403</div>
+    <h1 class="mt-3 text-lg font-bold">{% translate "مش مسموحلك تفتح الصفحة دي" %}</h1>
+    <p class="mt-2 text-sm text-stone-500">{% translate "لو محتاج الصلاحية دي، كلّم مدير النظام." %}</p>
+    <a href="/" class="btn-primary mt-6">{% translate "الرجوع للرئيسية" %}</a>
+  </div>
+</div>
+{% endblock %}

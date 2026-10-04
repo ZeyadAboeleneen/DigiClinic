@@ -1,0 +1,14 @@
+{% load i18n %}
+<ul class="space-y-2">
+  {% for r in records %}
+  <li class="flex justify-between gap-2">
+    <span>
+      {% if r.history_type == "+" %}{% translate "اتضاف" %}{% elif r.history_type == "-" %}{% translate "اتمسح" %}{% else %}{% translate "اتعدّل" %}{% endif %}
+      {% if r.history_user %}— {{ r.history_user.full_name }}{% endif %}
+    </span>
+    <span dir="ltr" class="text-xs">{{ r.history_date|date:"Y/m/d H:i" }}</span>
+  </li>
+  {% empty %}
+  <li>{% translate "مفيش تعديلات." %}</li>
+  {% endfor %}
+</ul>

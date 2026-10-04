@@ -1,0 +1,40 @@
+{% load i18n %}
+<section id="wa-status" class="card space-y-4 p-4 sm:p-6"
+         {% if st.state == "qr" or st.state == "starting" or st.state == "connecting" %}hx-get="{% url 'messaging:whatsapp_status' %}" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <h2 class="font-bold">{% translate "واتساب" %}</h2>
+    <span class="badge {% if st.state == 'ready' %}bg-green-50 text-green-700{% elif st.state == 'offline' or st.state == 'error' %}bg-red-50 text-red-700{% else %}bg-amber-50 text-amber-700{% endif %}">
+      {% if st.state == "ready" %}🟢{% elif st.state == "offline" or st.state == "error" %}🔴{% else %}🟡{% endif %} {{ state_label }}
+    </span>
+  </div>
+
+  {% if st.state == "offline" %}
+    <p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{% translate "بوابة الواتساب مش شغالة. اقفل نافذة run.bat وافتحها تاني (هي بتشغّل البوابة لوحدها)." %}</p>
+  {% elif st.state == "ready" %}
+    <p class="text-sm">{% translate "متصل بالرقم:" %} <b dir="ltr">{{ cfg.sender_identity|default:st.me }}</b></p>
+    {% if mismatch %}
+      <p class="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">{% blocktranslate %}تنبيه: الرقم المتصل مختلف عن رقم الإرسال المتفق عليه ({{ expected }}).{% endblocktranslate %}</p>
+    {% endif %}
+    <form method="post" action="{% url 'messaging:whatsapp_test' %}" class="flex flex-wrap items-end gap-2">
+      {% csrf_token %}
+      <div class="form-field flex-1">{{ test_form.to.label_tag }}{{ test_form.to }}</div>
+      <button class="btn-secondary">{% translate "ابعت تجربة" %}</button>
+    </form>
+    <form method="post" action="{% url 'messaging:whatsapp_disconnect' %}" onsubmit="return confirm('{% translate 'فصل الواتساب؟ هتحتاج QR جديد للربط تاني.' %}')">
+      {% csrf_token %}<button class="btn-danger">{% translate "فصل / تغيير الرقم" %}</button>
+    </form>
+  {% elif st.state == "qr" %}
+    <div class="flex flex-col items-center gap-3">
+      <img src="{{ st.qr }}" alt="QR" class="size-64 rounded-lg border border-stone-200 bg-white p-2">
+      <p class="text-sm text-stone-600">{% translate "امسح الكود ده من واتساب على الموبايل (الأجهزة المرتبطة). بيتجدد لوحده." %}</p>
+    </div>
+  {% elif st.state == "starting" or st.state == "connecting" %}
+    <p class="text-sm text-stone-600">{% translate "استنى ثواني..." %}</p>
+  {% else %}
+    <p class="text-sm text-stone-600">{% blocktranslate %}رقم الإرسال المتفق عليه: {{ expected }}{% endblocktranslate %}</p>
+    <form method="post" action="{% url 'messaging:whatsapp_connect' %}">
+      {% csrf_token %}<button class="btn-primary">{% translate "ربط رقم" %}</button>
+    </form>
+    {% if cfg.last_error %}<p class="text-xs text-red-700">{{ cfg.last_error }}</p>{% endif %}
+  {% endif %}
+</section>

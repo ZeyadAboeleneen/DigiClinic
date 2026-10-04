@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "الإرسال بالإيميل" %}{% endblock %}
+{% block content %}
+<h1 class="mb-6 text-2xl font-bold">{% translate "الإعدادات" %}</h1>
+{% include "partials/settings_tabs.html" %}
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <form method="post" class="card space-y-4 p-4 sm:p-6 lg:col-span-2" novalidate autocomplete="off">
+    {% csrf_token %}
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h2 class="font-bold">{% translate "إعدادات SMTP" %}</h2>
+      <span class="badge {% if cfg.status == 'connected' %}bg-green-50 text-green-700{% elif cfg.status == 'error' %}bg-red-50 text-red-700{% else %}bg-stone-100 text-stone-600{% endif %}">{{ cfg.get_status_display }}</span>
+    </div>
+    {% if cfg.last_error %}<div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ cfg.last_error }}</div>{% endif %}
+    <label class="flex items-center gap-2 text-sm font-semibold">{{ form.is_active }} {{ form.is_active.label }}</label>
+    <div class="grid gap-4 sm:grid-cols-2">
+      {% include "partials/field.html" with field=form.display_name %}
+      {% include "partials/field.html" with field=form.from_email %}
+      {% include "partials/field.html" with field=form.host %}
+      <div class="grid grid-cols-2 gap-3">
+        {% include "partials/field.html" with field=form.port %}
+        {% include "partials/field.html" with field=form.security %}
+      </div>
+      {% include "partials/field.html" with field=form.smtp_user %}
+      <div>
+        {% include "partials/field.html" with field=form.smtp_secret %}
+        {% if has_password %}<p class="mt-1 text-xs font-semibold text-green-700">{% translate "فيه كلمة مرور متسجلة ✓" %}</p>{% endif %}
+      </div>
+    </div>
+    <div class="flex justify-end"><button class="btn-primary">{% translate "حفظ" %}</button></div>
+  </form>
+
+  <aside class="space-y-6">
+    <section class="card p-4 text-sm">
+      <h2 class="mb-2 font-bold">{% translate "ابعت إيميل تجربة" %}</h2>
+      <form method="post" action="{% url 'messaging:email_test' %}" class="space-y-2">
+        {% csrf_token %}
+        <input type="email" name="to" value="{{ request.user.email }}" dir="ltr" class="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm">
+        <button class="btn-secondary w-full">{% translate "ابعت" %}</button>
+      </form>
+    </section>
+    <section class="card space-y-2 p-4 text-sm text-stone-600">
+      <h2 class="font-bold text-ink">{% translate "لو الإيميل Gmail" %}</h2>
+      <ol class="list-inside list-decimal space-y-1">
+        <li>{% translate "فعّل «التحقق بخطوتين» على حساب جوجل." %}</li>
+        <li>{% translate "من myaccount.google.com/apppasswords اعمل «App Password» جديد." %}</li>
+        <li>{% translate "السيرفر: smtp.gmail.com — Port: 587 — التشفير: STARTTLS." %}</li>
+        <li>{% translate "اسم المستخدم = الإيميل كامل، وكلمة المرور = الـApp Password (16 حرف)، مش كلمة سر الإيميل." %}</li>
+      </ol>
+    </section>
+  </aside>
+</div>
+{% endblock %}

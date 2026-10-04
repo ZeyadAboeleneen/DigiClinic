@@ -1,0 +1,68 @@
+{% load i18n %}
+<section id="party" class="card">
+  <div class="flex items-center justify-between border-b border-stone-100 px-4 py-3">
+    <h2 class="font-bold"><span class="text-brand">①</span> {% translate "العميل والمسؤول" %}</h2>
+    {% if q.customer and not locked_customer %}
+    <button type="button" class="btn-ghost px-2 py-1 text-xs" hx-post="{% url 'quotations:set_customer' q.pk %}" hx-vals='{"customer": ""}'>{% translate "تغيير العميل" %}</button>
+    {% endif %}
+  </div>
+
+  {% if not q.customer %}
+  <div class="p-4" x-data>
+    <input type="search" name="cq" autocomplete="off" autofocus
+           placeholder="{% translate 'ابحث عن الفندق أو الشركة...' %}"
+           hx-get="{% url 'quotations:customer_search' q.pk %}" hx-trigger="load, input changed delay:200ms" hx-target="#customer-results"
+           class="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20">
+    <div id="customer-results" class="mt-2"></div>
+    {% if can.customer_edit %}
+    <div id="quick-customer-slot" class="mt-2">
+      <button type="button" class="text-sm font-semibold text-brand hover:underline" hx-get="{% url 'quotations:quick_customer' q.pk %}" hx-target="#quick-customer-slot">{% translate "+ عميل جديد مش موجود" %}</button>
+    </div>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="space-y-3 p-4">
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="text-lg font-bold">{{ q.customer.name }}</span>
+      <span class="badge bg-sand font-mono text-stone-700" dir="ltr">{{ q.customer.code }}</span>
+      <span class="text-xs text-stone-500">{{ q.customer.get_kind_display }}{% if q.customer.parent %} · {{ q.customer.path_display }}{% endif %}</span>
+      <a href="{% url 'customers:detail' q.customer.pk %}" target="_blank" class="ms-auto text-xs text-stone-400 hover:text-brand">{% translate "صفحة العميل ↗" %}</a>
+    </div>
+
+    {% if last_quote %}
+    <div class="flex flex-wrap items-center gap-2 rounded-lg bg-sand/70 px-3 py-2 text-sm">
+      <span>{% blocktranslate with n=last_quote.display_number d=last_quote.issue_date|date:"Y/m/d" c=last_quote.items_count %}آخر عرض: {{ n }} ({{ d }}) — {{ c }} صنف{% endblocktranslate %}</span>
+      <button type="button" class="btn-secondary ms-auto px-3 py-1 text-xs" hx-post="{% url 'quotations:copy_last' q.pk %}">↻ {% translate "انسخ أصنافه وأسعاره" %}</button>
+    </div>
+    {% endif %}
+
+    <div>
+      <div class="mb-1 text-sm font-semibold text-stone-600">{% translate "المسؤول" %}</div>
+      {% if contacts %}
+      <div class="grid gap-2 sm:grid-cols-2">
+        {% for c in contacts %}
+        <label class="flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 text-sm {% if q.contact_id == c.pk %}border-brand bg-brand-soft{% else %}border-stone-200 hover:bg-sand/60{% endif %}">
+          <input type="radio" name="contact" value="{{ c.pk }}" class="mt-1 accent-brand" {% if q.contact_id == c.pk %}checked{% endif %}
+                 hx-post="{% url 'quotations:set_contact' q.pk %}" hx-trigger="change">
+          <span class="min-w-0">
+            <span class="block font-semibold">{{ c }}</span>
+            {% if c.job_title %}<span class="block text-xs text-stone-500">{{ c.job_title }}</span>{% endif %}
+            <span class="mt-1 flex flex-wrap gap-2 text-xs text-stone-500" dir="ltr">
+              {% for ch in c.channels.all %}{% if ch.is_primary %}<span>{% if ch.type == "whatsapp" %}📱{% elif ch.type == "email" %}✉️{% else %}☎{% endif %} {{ ch.display_value }}</span>{% endif %}{% empty %}<span class="text-amber-700" dir="rtl">{% translate "مفيش رقم ولا إيميل" %}</span>{% endfor %}
+            </span>
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-sm text-amber-700">{% translate "العميل ده ملوش مسؤولين. ضيف واحد." %}</p>
+      {% endif %}
+      {% if can.customer_edit %}
+      <div id="quick-contact-slot" class="mt-2">
+        <button type="button" class="text-sm font-semibold text-brand hover:underline" hx-get="{% url 'quotations:quick_contact' q.pk %}" hx-target="#quick-contact-slot">{% translate "+ مسؤول جديد" %}</button>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</section>

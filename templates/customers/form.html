@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% if customer %}{% translate "تعديل عميل" %}{% else %}{% translate "عميل جديد" %}{% endif %}{% endblock %}
+{% block content %}
+<div class="mb-6">
+  <a href="{% if customer %}{% url 'customers:detail' customer.pk %}{% else %}{% url 'customers:list' %}{% endif %}" class="text-sm text-stone-500 hover:text-brand">← {% if customer %}{{ customer.name }}{% else %}{% translate "العملاء" %}{% endif %}</a>
+  <h1 class="mt-1 text-2xl font-bold">{% if customer %}{% translate "تعديل بيانات العميل" %}{% else %}{% translate "عميل جديد" %}{% endif %}</h1>
+</div>
+
+<form method="post" class="card max-w-3xl space-y-4 p-4 sm:p-6" novalidate>
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="grid gap-4 sm:grid-cols-2">
+    {% include "partials/field.html" with field=form.name %}
+    {% include "partials/field.html" with field=form.code %}
+    {% include "partials/field.html" with field=form.kind %}
+    {% include "partials/field.html" with field=form.parent %}
+    {% include "partials/field.html" with field=form.city %}
+    {% include "partials/field.html" with field=form.area %}
+    <div class="sm:col-span-2">{% include "partials/field.html" with field=form.address %}</div>
+    {% include "partials/field.html" with field=form.tax_id %}
+    <div class="sm:col-span-2">{% include "partials/field.html" with field=form.notes %}</div>
+  </div>
+  <div class="flex justify-end gap-2">
+    <a href="{% if customer %}{% url 'customers:detail' customer.pk %}{% else %}{% url 'customers:list' %}{% endif %}" class="btn-secondary">{% translate "إلغاء" %}</a>
+    <button type="submit" class="btn-primary">{% translate "حفظ" %}</button>
+  </div>
+</form>
+{% endblock %}

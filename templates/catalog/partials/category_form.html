@@ -1,0 +1,10 @@
+{% load i18n %}
+<form class="flex flex-wrap items-start gap-2 border-b border-stone-100 bg-sand/60 px-4 py-3 text-sm"
+      hx-post="{% if instance %}{% url 'catalog:category_edit' instance.pk %}{% else %}{% url 'catalog:category_create' form.initial.group.pk %}{% endif %}"
+      hx-target="this" hx-swap="outerHTML" novalidate>
+  {% csrf_token %}
+  <div class="form-field min-w-48 flex-1">{{ form.name }}{{ form.name.errors }}</div>
+  <div class="form-field w-56">{{ form.group }}{{ form.group.errors }}</div>
+  <button type="submit" class="btn-primary px-3 py-2">{% if instance %}{% translate "حفظ" %}{% else %}{% translate "إضافة القسم" %}{% endif %}</button>
+  <button type="button" class="btn-ghost px-3 py-2" onclick="this.closest('form').remove()">{% translate "إلغاء" %}</button>
+</form>

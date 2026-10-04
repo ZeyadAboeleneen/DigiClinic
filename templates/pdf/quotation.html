@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>{% if number %}{{ number }}{% else %}مسودة{% endif %}</title>
+<style>
+{{ font_css|safe }}
+:root { --red: {{ primary }}; --pink: {{ section_bg }}; --ink: #1c1c1c; --muted: #6b6b6b; --line: #e7dcdc; }
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { font-family: 'Poppins', 'Cairo', sans-serif; color: var(--ink); font-size: 10.5px; line-height: 1.55;
+       -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.ltr { direction: ltr; unicode-bidi: isolate; display: inline-block; }
+
+/* Header */
+.header { display: flex; align-items: center; gap: 16px; padding-bottom: 10px; border-bottom: 3px solid var(--red); }
+.header .logo { width: 78px; height: 78px; object-fit: contain; }
+.header .brand { flex: 1; text-align: center; }
+.header .name-ar { color: var(--red); font-size: 24px; font-weight: 700; line-height: 1.3; }
+.header .name-en { font-size: 12px; font-weight: 700; letter-spacing: .08em; margin-top: 2px; }
+.header .tagline { color: var(--muted); font-size: 9.5px; margin-top: 4px; }
+.header .phones { color: var(--red); font-size: 11px; font-weight: 700; margin-top: 4px; direction: ltr; }
+.header .spacer { width: 78px; }
+
+/* Meta bar */
+.meta { display: flex; margin-top: 12px; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: #faf7f6; }
+.meta .title { background: var(--red); color: #fff; font-size: 16px; font-weight: 700; padding: 10px 20px; white-space: nowrap; }
+.meta .fields { flex: 1; display: flex; justify-content: space-around; align-items: center; gap: 10px; padding: 0 10px; }
+.meta b { color: var(--red); font-weight: 700; }
+
+/* To block */
+.to { width: 100%; margin-top: 10px; border-collapse: collapse; border: 1px solid var(--line); }
+.to th { width: 130px; background: var(--pink); color: var(--red); text-align: right; font-weight: 700; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+.to td { padding: 7px 10px; font-weight: 600; border-bottom: 1px solid var(--line); }
+
+.intro { margin-top: 10px; }
+.intro .note { color: var(--red); font-weight: 700; }
+
+/* Items */
+table.items { width: 100%; margin-top: 10px; border-collapse: collapse; }
+table.items thead { display: table-header-group; }
+table.items thead th { background: var(--red); color: #fff; font-weight: 700; padding: 7px 8px; text-align: center; font-size: 10.5px; }
+table.items thead th.desc { text-align: center; }
+table.items td { padding: 5px 8px; border-bottom: 1px solid #efe8e8; }
+table.items td.no { width: 32px; color: var(--muted); text-align: center; background: #faf7f6; }
+table.items td.unit { width: 80px; text-align: center; border-inline: 1px solid #efe8e8; }
+table.items td.price { width: 90px; text-align: center; color: var(--red); font-weight: 700; direction: ltr; }
+table.items tr.section td { background: var(--pink); color: var(--red); font-weight: 700; text-align: center; padding: 6px; border-bottom: 1px solid #e8c8c8; }
+table.items tr { break-inside: avoid; }
+table.items tbody.keep { break-inside: avoid; }
+
+/* Terms */
+.terms { margin-top: 16px; padding: 10px 14px; background: #faf7f6; border-right: 3px solid var(--red); break-inside: avoid; }
+.terms h3 { margin: 0 0 6px; color: var(--red); font-size: 12px; }
+.terms ul { margin: 0; padding-right: 16px; }
+.terms li { margin: 2px 0; }
+
+.watermark { position: fixed; top: 38%; left: 0; right: 0; text-align: center; font-size: 120px; font-weight: 700;
+             color: rgba(174, 23, 28, .08); transform: rotate(-30deg); z-index: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+{% if draft %}<div class="watermark">مسودة</div>{% endif %}
+
+<div class="header">
+  {% if logo %}<img class="logo" src="{{ logo }}" alt="">{% else %}<div class="spacer"></div>{% endif %}
+  <div class="brand">
+    <div class="name-ar">{{ org.name_ar }}</div>
+    {% if org.name_en %}<div class="name-en">{{ org.name_en|upper }}</div>{% endif %}
+    {% if s.tagline_ar %}<div class="tagline">{{ s.tagline_ar }}</div>{% endif %}
+    {% if s.phones %}<div class="phones">{{ s.phones|join:" | " }}</div>{% endif %}
+  </div>
+  <div class="spacer"></div>
+</div>
+
+<div class="meta">
+  <div class="title">عرض أسعار</div>
+  <div class="fields">
+    <span><b>رقم العرض:</b> <span class="ltr">{% if number %}{{ number }}{% else %}مسودة{% endif %}</span></span>
+    <span><b>التاريخ:</b> {{ q.issue_date|date:"Y / m / d" }}</span>
+    <span><b>سريان العرض:</b> حتى <span class="ltr">{{ q.valid_until|date:"Y/m/d" }}</span></span>
+  </div>
+</div>
+
+<table class="to">
+  {% for title, name in recipient_lines %}
+  <tr><th>{{ title }}</th><td>{{ name }}</td></tr>
+  {% endfor %}
+  {% if attention %}<tr><th>عناية</th><td>{{ attention }}</td></tr>{% endif %}
+</table>
+
+<div class="intro">
+  <div>تحية طيبة وبعد ,,,</div>
+  <div>{{ q.intro_text }}{% if q.price_note %} <span class="note">({{ q.price_note }})</span>{% endif %}</div>
+</div>
+
+<table class="items">
+  <thead>
+    <tr><th>م</th><th class="desc">الصنف</th><th>الوحدة</th><th>السعر (ج.م)</th></tr>
+  </thead>
+  {% for name, rows in sections %}
+    <tbody class="keep">
+      <tr class="section"><td colspan="4">{{ name }}</td></tr>
+      {% with first=rows.0 %}
+      <tr><td class="no">{{ first.no }}</td><td>{{ first.description }}</td><td class="unit">{{ first.unit_name }}</td><td class="price">{{ first.unit_price|floatformat:"-2u" }}</td></tr>
+      {% endwith %}
+    </tbody>
+    <tbody>
+      {% for it in rows|slice:"1:" %}
+      <tr><td class="no">{{ it.no }}</td><td>{{ it.description }}</td><td class="unit">{{ it.unit_name }}</td><td class="price">{{ it.unit_price|floatformat:"-2u" }}</td></tr>
+      {% endfor %}
+    </tbody>
+  {% endfor %}
+</table>
+
+{% if q.terms %}
+<div class="terms">
+  <h3>الشروط والملاحظات</h3>
+  <ul>{% for t in q.terms %}<li>{{ t }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+</body>
+</html>

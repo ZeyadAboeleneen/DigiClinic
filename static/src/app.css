@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@source "../../templates";
+@source "../../apps";
+
+/* Poppins handles Latin letters and digits; Arabic falls through to Cairo (brand guideline). */
+@font-face { font-family: "Poppins"; font-weight: 400; font-display: swap; src: url("../fonts/poppins-latin-400.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2212; }
+@font-face { font-family: "Poppins"; font-weight: 600; font-display: swap; src: url("../fonts/poppins-latin-600.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2212; }
+@font-face { font-family: "Poppins"; font-weight: 700; font-display: swap; src: url("../fonts/poppins-latin-700.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2212; }
+@font-face { font-family: "Cairo"; font-weight: 400; font-display: swap; src: url("../fonts/cairo-arabic-400.woff2") format("woff2"); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF, U+200C-200E, U+2010-2011, U+204F, U+2E41; }
+@font-face { font-family: "Cairo"; font-weight: 600; font-display: swap; src: url("../fonts/cairo-arabic-600.woff2") format("woff2"); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF, U+200C-200E, U+2010-2011, U+204F, U+2E41; }
+@font-face { font-family: "Cairo"; font-weight: 700; font-display: swap; src: url("../fonts/cairo-arabic-700.woff2") format("woff2"); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF, U+200C-200E, U+2010-2011, U+204F, U+2E41; }
+@font-face { font-family: "Cairo"; font-weight: 400; font-display: swap; src: url("../fonts/cairo-latin-400.woff2") format("woff2"); unicode-range: U+0000-00FF; }
+
+@theme {
+  --font-sans: "Poppins", "Cairo", ui-sans-serif, system-ui, sans-serif;
+  --color-brand: #AE171C;
+  --color-brand-dark: #8E1217;
+  --color-brand-soft: #FBECEC;
+  --color-ink: #111111;
+  --color-sand: #F5F2EF;
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-sand text-ink antialiased; }
+  [x-cloak] { display: none !important; }
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+@layer components {
+  .btn-primary { @apply btn bg-brand text-white hover:bg-brand-dark; }
+  .btn-secondary { @apply btn border border-stone-300 bg-white text-ink hover:bg-stone-50; }
+  .btn-ghost { @apply btn text-stone-600 hover:bg-stone-100; }
+  .btn-danger { @apply btn border border-red-200 bg-white text-red-700 hover:bg-red-50; }
+  .card { @apply rounded-xl border border-stone-200 bg-white shadow-sm; }
+  .badge { @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold; }
+
+  .form-field { @apply space-y-1; }
+  .form-field label { @apply block text-sm font-semibold text-stone-700; }
+  .form-field input:not([type=checkbox]):not([type=color]):not([type=file]),
+  .form-field select,
+  .form-field textarea { @apply block w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none; }
+  .form-field input[type=color] { @apply h-10 w-20 cursor-pointer rounded-lg border border-stone-300 bg-white p-1; }
+  .form-field input[type=file] { @apply block w-full text-sm file:me-3 file:rounded-lg file:border-0 file:bg-sand file:px-3 file:py-2 file:font-semibold; }
+  .form-field .help { @apply text-xs text-stone-500; }
+  .form-field .errorlist { @apply text-xs font-semibold text-red-700; }
+  .form-field.has-error input, .form-field.has-error select, .form-field.has-error textarea { @apply border-red-400; }
+
+  .nav-link { @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-stone-600 hover:bg-sand hover:text-ink; }
+  .nav-link.active { @apply bg-brand-soft text-brand; }
+  .nav-link.disabled { @apply cursor-default text-stone-400 hover:bg-transparent hover:text-stone-400; }
+}

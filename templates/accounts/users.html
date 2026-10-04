@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "المستخدمين" %}{% endblock %}
+{% block content %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <h1 class="text-2xl font-bold">{% translate "المستخدمين" %}</h1>
+</div>
+
+{% if new_link %}
+<div class="card mb-6 border-brand/30 bg-brand-soft p-4" x-data="{ copied: false }">
+  <div class="mb-2 text-sm font-semibold">{% translate "رابط الدعوة (ابعته للمستخدم — مش هيظهر تاني):" %}</div>
+  <div class="flex flex-col gap-2 sm:flex-row">
+    <input type="text" readonly value="{{ new_link }}" dir="ltr" x-ref="link" class="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs">
+    <button type="button" class="btn-secondary shrink-0" @click="navigator.clipboard.writeText($refs.link.value); copied = true">
+      <span x-show="!copied">{% translate "نسخ" %}</span><span x-cloak x-show="copied">{% translate "اتنسخ ✓" %}</span>
+    </button>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <section class="card overflow-hidden lg:col-span-2">
+    <div class="border-b border-stone-100 px-4 py-3 font-bold">{% translate "أعضاء الشركة" %}</div>
+    <ul class="divide-y divide-stone-100">
+      {% for m in memberships %}
+      <li class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center">
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            <span class="truncate font-semibold">{{ m.user.full_name }}</span>
+            {% if not m.is_active %}<span class="badge bg-stone-100 text-stone-500">{% translate "متوقف" %}</span>{% endif %}
+            {% if m.user == request.user %}<span class="badge bg-sand text-stone-600">{% translate "أنت" %}</span>{% endif %}
+          </div>
+          <div class="truncate text-xs text-stone-500" dir="ltr">{{ m.user.email }}</div>
+        </div>
+        {% if m.user != request.user and m.role != 'owner' or m.user != request.user and current_membership.role == 'owner' %}
+        <div class="flex items-center gap-2">
+          <form method="post" action="{% url 'accounts:membership_role' m.pk %}">
+            {% csrf_token %}
+            <select name="role" onchange="this.form.submit()" class="rounded-lg border border-stone-300 bg-white px-2 py-1.5 text-sm" aria-label="{% translate 'الدور' %}">
+              {% for r in allowed_roles %}<option value="{{ r.value }}" {% if r.value == m.role %}selected{% endif %}>{{ r.label }}</option>{% endfor %}
+            </select>
+          </form>
+          <form method="post" action="{% url 'accounts:membership_toggle' m.pk %}"
+                onsubmit="return confirm('{% if m.is_active %}{% translate 'متأكد إنك عايز توقف الحساب ده؟' %}{% else %}{% translate 'تفعيل الحساب ده تاني؟' %}{% endif %}')">
+            {% csrf_token %}
+            <button type="submit" class="{% if m.is_active %}btn-danger{% else %}btn-secondary{% endif %} px-3 py-1.5">
+              {% if m.is_active %}{% translate "إيقاف" %}{% else %}{% translate "تفعيل" %}{% endif %}
+            </button>
+          </form>
+        </div>
+        {% else %}
+        <span class="badge bg-sand text-stone-700">{{ m.get_role_display }}</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+
+    {% if invitations %}
+    <div class="border-y border-stone-100 bg-stone-50 px-4 py-2 text-sm font-bold">{% translate "دعوات لسه متقبلتش" %}</div>
+    <ul class="divide-y divide-stone-100">
+      {% for inv in invitations %}
+      <li class="flex items-center gap-3 px-4 py-3">
+        <div class="min-w-0 flex-1">
+          <div class="truncate font-semibold">{{ inv.full_name }} <span class="badge bg-sand text-stone-600">{{ inv.get_role_display }}</span></div>
+          <div class="truncate text-xs text-stone-500"><span dir="ltr">{{ inv.email }}</span> · {% translate "تنتهي" %} {{ inv.expires_at|date:"Y/m/d H:i" }}</div>
+        </div>
+        <form method="post" action="{% url 'accounts:invite_revoke' inv.pk %}" onsubmit="return confirm('{% translate 'إلغاء الدعوة دي؟' %}')">
+          {% csrf_token %}
+          <button type="submit" class="btn-ghost px-3 py-1.5 text-sm">{% translate "إلغاء" %}</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+
+  <section class="card h-fit p-4">
+    <h2 class="mb-4 font-bold">{% translate "دعوة مستخدم جديد" %}</h2>
+    <form method="post" action="{% url 'accounts:invite_create' %}" class="space-y-4" novalidate>
+      {% csrf_token %}
+      {% include "partials/field.html" with field=form.full_name %}
+      {% include "partials/field.html" with field=form.email %}
+      {% include "partials/field.html" with field=form.role %}
+      <button type="submit" class="btn-primary w-full">{% translate "إنشاء رابط دعوة" %}</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

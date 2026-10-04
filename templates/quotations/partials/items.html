@@ -1,0 +1,31 @@
+{% load i18n %}
+<section id="items" class="card">
+  <div class="flex flex-wrap items-center gap-2 border-b border-stone-100 px-4 py-3">
+    <h2 class="font-bold"><span class="text-brand">②</span> {% translate "الأصناف والأسعار" %}</h2>
+    <span class="badge bg-sand text-stone-700">{% blocktranslate count n=count %}{{ n }} صنف{% plural %}{{ n }} صنف{% endblocktranslate %}</span>
+    <a href="#picker-form" class="btn-secondary px-2 py-1 text-xs lg:hidden" onclick="setTimeout(()=>document.getElementById('pq').focus(),300)">{% translate "+ ضيف أصناف" %}</a>
+    {% if missing %}<span class="badge bg-amber-50 text-amber-700">{% blocktranslate count n=missing %}{{ n }} من غير سعر{% plural %}{{ n }} من غير سعر{% endblocktranslate %}</span>{% endif %}
+    {% if count %}
+    <button type="button" class="btn-ghost ms-auto px-2 py-1 text-xs text-stone-500" hx-post="{% url 'quotations:clear_items' q.pk %}"
+            hx-confirm="{% translate 'مسح كل الأصناف من العرض؟' %}">{% translate "مسح الكل" %}</button>
+    {% endif %}
+  </div>
+
+  {% if sections %}
+  <div class="hidden grid-cols-12 gap-2 border-b border-stone-100 px-4 py-2 text-xs font-semibold text-stone-500 sm:grid">
+    <span class="col-span-6">{% translate "الصنف" %}</span>
+    <span class="col-span-2 text-center">{% translate "الوحدة" %}</span>
+    <span class="col-span-3">{% translate "سعر الوحدة (ج.م)" %}</span>
+  </div>
+  {% for name, rows in sections %}
+    <div class="border-b border-brand/10 bg-brand-soft px-4 py-1.5 text-sm font-bold text-brand">{{ name }}</div>
+    <div class="divide-y divide-stone-100">
+      {% for it in rows %}{% include "quotations/partials/item_row.html" %}{% endfor %}
+    </div>
+  {% endfor %}
+  {% else %}
+  <div class="px-4 py-10 text-center text-sm text-stone-500">
+    {% translate "لسه مفيش أصناف. دوّر على الصنف في لوحة «ضيف أصناف» واضغط عليه، أو ضيف قسم كامل." %}
+  </div>
+  {% endif %}
+</section>

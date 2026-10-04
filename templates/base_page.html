@@ -1,0 +1,21 @@
+{% load static i18n %}<!DOCTYPE html>
+{% get_current_language as LANG %}
+<html lang="{{ LANG }}" dir="{% if LANG == 'ar' %}rtl{% else %}ltr{% endif %}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %} · {% translate "مرسول البرق" %}</title>
+  <link rel="icon" type="image/png" href="{% static 'img/icon.png' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <script defer src="{% static 'vendor/htmx.min.js' %}"></script>
+  <script defer src="{% static 'vendor/alpine.min.js' %}"></script>
+</head>
+<body class="min-h-screen" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  {% block body %}{% endblock %}
+  {% include "partials/toasts.html" %}
+  <script>
+    // Server-side HTMX responses can send HX-Trigger: {"notify": "message"} for a quick notice.
+    document.body.addEventListener("notify", (e) => alert(e.detail.value));
+  </script>
+</body>
+</html>

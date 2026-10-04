@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ customer.name }}{% endblock %}
+{% block content %}
+<a href="{% url 'customers:detail' customer.pk %}" class="text-sm text-stone-500 hover:text-brand">← {{ customer.name }}</a>
+<div class="card mt-3 max-w-3xl overflow-hidden">{% include "customers/partials/contact_form.html" %}</div>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% if messages %}
+<div class="pointer-events-none fixed inset-x-0 bottom-4 z-[60] flex flex-col items-center gap-2 px-4">
+  {% for message in messages %}
+  <div x-data="{ show: true }" x-init="setTimeout(() => show = false, 5000)" x-show="show" x-transition.opacity
+       role="status"
+       class="pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold shadow-lg
+              {% if message.tags == 'error' %}bg-red-700 text-white{% else %}bg-ink text-white{% endif %}">
+    <span class="flex-1">{{ message }}</span>
+    <button type="button" class="opacity-70 hover:opacity-100" @click="show = false" aria-label="×">×</button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

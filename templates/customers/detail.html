@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ customer.name }}{% endblock %}
+{% block content %}
+<div class="mb-6">
+  <a href="{% url 'customers:list' %}" class="text-sm text-stone-500 hover:text-brand">← {% translate "العملاء" %}</a>
+  <div class="mt-1 flex flex-wrap items-start justify-between gap-3">
+    <div class="min-w-0">
+      {% with anc=customer.ancestors %}
+      {% if anc %}
+      <nav class="mb-1 flex flex-wrap items-center gap-1 text-sm text-stone-500">
+        {% for a in anc %}<a href="{% url 'customers:detail' a.pk %}" class="hover:text-brand">{{ a.name }}</a><span>←</span>{% endfor %}
+      </nav>
+      {% endif %}
+      {% endwith %}
+      <h1 class="flex items-center gap-2 text-2xl font-bold">
+        {{ customer.name }}
+        {% if not customer.is_active %}<span class="badge bg-stone-100 text-stone-500">{% translate "متوقف" %}</span>{% endif %}
+      </h1>
+      <div class="text-sm text-stone-500">{{ customer.get_kind_display }}{% if customer.city %} · {{ customer.city }}{% endif %}{% if customer.area %} — {{ customer.area }}{% endif %}</div>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      {% if can.quotation_create and customer.is_active %}
+      <form method="post" action="{% url 'quotations:new' %}">{% csrf_token %}<input type="hidden" name="customer" value="{{ customer.pk }}"><button class="btn-primary">{% translate "عرض سعر جديد" %}</button></form>
+      {% endif %}
+    {% if can.customer_edit %}
+      <a href="{% url 'customers:edit' customer.pk %}" class="btn-secondary">{% translate "تعديل" %}</a>
+      <a href="{% url 'customers:create' %}?parent={{ customer.pk }}" class="btn-secondary">{% translate "+ فرع / فندق تابع" %}</a>
+      <form method="post" action="{% url 'customers:toggle' customer.pk %}"
+            onsubmit="return confirm('{% if customer.is_active %}{% translate 'إيقاف العميل ده؟ مش هيظهر في اختيار العملاء.' %}{% else %}{% translate 'تفعيل العميل ده تاني؟' %}{% endif %}')">
+        {% csrf_token %}
+        <button class="{% if customer.is_active %}btn-danger{% else %}btn-secondary{% endif %}">{% if customer.is_active %}{% translate "إيقاف" %}{% else %}{% translate "تفعيل" %}{% endif %}</button>
+      </form>
+      {% if can.customer_delete %}
+      <form method="post" action="{% url 'customers:delete' customer.pk %}" onsubmit="return confirm('{% translate 'مسح العميل ده ومسؤولينه نهائيًا؟' %}')">
+        {% csrf_token %}<button class="btn-danger">{% translate "مسح" %}</button>
+      </form>
+      {% endif %}
+    {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="space-y-6 lg:col-span-2">
+    {% include "customers/partials/contacts.html" %}
+    {% if quotes %}
+    <section class="card">
+      <h2 class="border-b border-stone-100 px-4 py-3 font-bold">{% translate "العروض" %}</h2>
+      <ul class="divide-y divide-stone-100">
+        {% for q in quotes %}
+        <li><a href="{% url 'quotations:detail' q.pk %}" class="flex items-center gap-3 px-4 py-2 text-sm hover:bg-sand/60">
+          <span class="font-mono font-bold" dir="ltr">{% if q.number %}{{ q.display_number }}{% else %}{{ q }}{% endif %}</span>
+          <span class="flex-1 text-xs text-stone-500" dir="ltr">{{ q.issue_date|date:"Y/m/d" }}</span>
+          {% include "quotations/partials/status_badge.html" with s=q.status label=q.get_status_display %}
+        </a></li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </div>
+
+  <aside class="space-y-6">
+    <section class="card p-4">
+      <h2 class="mb-3 font-bold">{% translate "البيانات" %}</h2>
+      <dl class="space-y-2 text-sm">
+        <div class="flex justify-between gap-3"><dt class="text-stone-500">{% translate "كود العميل" %}</dt><dd dir="ltr" class="font-bold">{{ customer.code }}</dd></div>
+        <div class="flex justify-between gap-3"><dt class="text-stone-500">{% translate "الرقم الضريبي" %}</dt><dd dir="ltr">{{ customer.tax_id|default:"—" }}</dd></div>
+        <div class="flex justify-between gap-3"><dt class="text-stone-500">{% translate "العنوان" %}</dt><dd class="text-end">{{ customer.address|default:"—"|linebreaksbr }}</dd></div>
+        {% if customer.notes %}<div><dt class="text-stone-500">{% translate "ملاحظات" %}</dt><dd class="mt-1 whitespace-pre-line">{{ customer.notes }}</dd></div>{% endif %}
+      </dl>
+    </section>
+
+    <section class="card p-4">
+      <h2 class="mb-2 font-bold">{% translate "هيتكتب في العرض كده" %}</h2>
+      <div class="overflow-hidden rounded-lg border border-stone-200 text-sm">
+        {% for title, name in customer.recipient_lines %}
+        <div class="flex border-b border-stone-200 last:border-0">
+          <div class="w-32 shrink-0 bg-brand-soft px-3 py-2 font-semibold text-brand">{{ title }}</div>
+          <div class="px-3 py-2 font-semibold">{{ name }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    {% if children %}
+    <section class="card p-4">
+      <h2 class="mb-2 font-bold">{% translate "تابعين ليه" %}</h2>
+      <ul class="space-y-1 text-sm">
+        {% for ch in children %}<li><a href="{% url 'customers:detail' ch.pk %}" class="hover:text-brand">{{ ch.name }}</a> <span class="text-xs text-stone-400">{{ ch.get_kind_display }}</span></li>{% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    <section class="card p-4" x-data="{ open: false }">
+      <button type="button" class="flex w-full items-center justify-between font-bold" @click="open = !open"
+              hx-get="{% url 'customers:history' customer.pk %}" hx-target="#history" hx-trigger="click once">
+        {% translate "سجل التعديلات" %} <span x-text="open ? '−' : '+'"></span>
+      </button>
+      <div id="history" x-show="open" x-cloak class="mt-3 text-sm text-stone-500">…</div>
+    </section>
+  </aside>
+</div>
+{% endblock %}

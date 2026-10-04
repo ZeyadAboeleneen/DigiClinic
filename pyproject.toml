@@ -1,0 +1,57 @@
+[project]
+name = "digiclinic"
+version = "0.1.0"
+description = "DigiClinic — نظام إدارة العيادات"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "django>=5.2,<5.3",
+    "psycopg[binary]>=3.2",
+    "django-environ>=0.12",
+    "django-htmx>=1.21",
+    "argon2-cffi>=23.1",
+    "django-axes>=7.0",
+    "cryptography>=43",
+    "pillow>=11",
+    "whitenoise>=6.8",
+    "phonenumbers>=9.0.40",
+    "django-simple-history>=3.13.0",
+    "openpyxl>=3.1.5",
+    "playwright>=1.63.0",
+    "httpx>=0.28.1",
+]
+
+[dependency-groups]
+dev = [
+    "pgserver>=0.1.4",
+    "pytest>=8",
+    "pytest-django>=4.9",
+    "factory-boy>=3.3",
+    "ruff>=0.8",
+    "pre-commit>=4",
+    "pytailwindcss>=0.3.1",
+    "tzdata>=2026.4",
+    "pypdf>=6.19.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py"]
+testpaths = ["tests", "apps"]
+addopts = "-q --reuse-db"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["**/migrations/*", "docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "DJ", "S", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003", "RUF012"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106", "S107"]
+"**/tests/**" = ["S101", "S105", "S106"]
+"config/settings/*" = ["F405", "F403", "S105"]

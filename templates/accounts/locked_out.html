@@ -1,0 +1,10 @@
+{% extends "base_auth.html" %}
+{% load i18n %}
+{% block title %}{% translate "الحساب مقفول مؤقتًا" %}{% endblock %}
+{% block card %}
+<div class="space-y-3 text-center">
+  <h2 class="text-lg font-bold text-brand">{% translate "الحساب مقفول مؤقتًا" %}</h2>
+  <p class="text-sm text-stone-600">{% translate "حصل 5 محاولات دخول غلط. جرّب تاني بعد 15 دقيقة، أو استخدم «نسيت كلمة المرور»." %}</p>
+  <a href="{% url 'accounts:password_reset' %}" class="btn-secondary w-full">{% translate "نسيت كلمة المرور" %}</a>
+</div>
+{% endblock %}

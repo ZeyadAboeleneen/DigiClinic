@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "واتساب" %}{% endblock %}
+{% block content %}
+<h1 class="mb-6 text-2xl font-bold">{% translate "الإعدادات" %}</h1>
+{% include "partials/settings_tabs.html" %}
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="lg:col-span-2">{% include "messaging/partials/whatsapp_status.html" %}</div>
+
+  <aside class="space-y-6">
+    <section class="card space-y-2 p-4 text-sm text-stone-600">
+      <h2 class="font-bold text-ink">{% translate "إزاي تربط الرقم" %}</h2>
+      <ol class="list-inside list-decimal space-y-1">
+        <li>{% translate "دوس «ربط رقم» واستنى الـQR يظهر." %}</li>
+        <li>{% translate "من الموبايل اللي عليه الرقم: واتساب ← الإعدادات ← الأجهزة المرتبطة ← ربط جهاز." %}</li>
+        <li>{% translate "امسح الـQR. الحالة هتبقى «متصل» خلال ثواني." %}</li>
+      </ol>
+      <p class="rounded bg-amber-50 p-2 text-xs text-amber-800">
+        {% translate "الرقم بيفضل شغال عادي على الموبايل. النظام مجرد جهاز مرتبط، وبيبعت رسالة كل 20 ثانية كحد أقصى عشان نقلل خطر الحظر. ابعت للعملاء اللي متوقعين العرض بس." %}
+      </p>
+    </section>
+  </aside>
+</div>
+{% endblock %}

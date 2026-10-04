@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<body style="margin:0;padding:0;background:#f5f2ef;font-family:Tahoma,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f2ef;padding:24px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;">
+        <tr><td style="background:{{ s.primary_color|default:'#AE171C' }};color:#ffffff;padding:16px 24px;font-size:18px;font-weight:bold;text-align:right;">
+          {{ org.name_ar }}
+        </td></tr>
+        <tr><td style="padding:24px;color:#111111;font-size:14px;line-height:1.8;text-align:right;white-space:pre-line;">{{ body }}</td></tr>
+        <tr><td style="padding:0 24px 24px;text-align:right;">
+          <span style="display:inline-block;background:#fbecec;color:{{ s.primary_color|default:'#AE171C' }};padding:8px 12px;border-radius:6px;font-size:13px;font-weight:bold;">
+            📎 عرض أسعار {{ q.display_number }} (PDF مرفق)
+          </span>
+        </td></tr>
+        <tr><td style="background:#faf7f6;color:#888888;padding:12px 24px;font-size:11px;text-align:right;">
+          {{ org.name_ar }}{% if s.phones %} • {{ s.phones|join:" / " }}{% endif %}{% if s.email_display %} • {{ s.email_display }}{% endif %}
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{% extends "base_auth.html" %}
+{% load i18n %}
+{% block title %}{% translate "دعوة غير صالحة" %}{% endblock %}
+{% block card %}
+<div class="space-y-3 text-center">
+  <p class="text-sm text-stone-600">{% translate "الدعوة دي انتهت أو اتلغت أو اتستخدمت قبل كده. اطلب دعوة جديدة من مدير النظام." %}</p>
+  <a href="{% url 'accounts:login' %}" class="btn-secondary w-full">{% translate "تسجيل الدخول" %}</a>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "سجل النشاط" %}{% endblock %}
+{% block content %}
+<h1 class="mb-6 text-2xl font-bold">{% translate "سجل النشاط" %}</h1>
+
+<form class="card mb-4 grid gap-2 p-3 sm:grid-cols-5"
+      hx-get="{% url 'audit:activity' %}" hx-target="#activity-rows" hx-swap="outerHTML" hx-push-url="true"
+      hx-trigger="input changed delay:300ms from:#aq, change">
+  <input id="aq" type="search" name="q" value="{{ f.q }}" placeholder="{% translate 'ابحث: رقم عرض، عميل، مستخدم...' %}"
+         class="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm sm:col-span-2">
+  <select name="group" class="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm">
+    <option value="">{% translate "كل الأنواع" %}</option>
+    {% for key, label in groups %}<option value="{{ key }}" {% if key == f.group %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+  <select name="user" class="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm">
+    <option value="">{% translate "كل المستخدمين" %}</option>
+    {% for u in users %}<option value="{{ u.pk }}" {% if u.pk|stringformat:'s' == f.user %}selected{% endif %}>{{ u.full_name }}</option>{% endfor %}
+  </select>
+  <div class="flex gap-1">
+    <input type="date" name="from" value="{{ f.from }}" class="min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-2 py-2 text-xs" aria-label="{% translate 'من' %}">
+    <input type="date" name="to" value="{{ f.to }}" class="min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-2 py-2 text-xs" aria-label="{% translate 'إلى' %}">
+  </div>
+</form>
+
+{% include "audit/partials/rows.html" %}
+{% endblock %}
