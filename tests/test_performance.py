@@ -17,6 +17,8 @@ from apps.patients.models import Allergy, Gender, Patient
 from apps.scheduling import services as booking
 from apps.scheduling.models import AppointmentStatus
 
+pytestmark = pytest.mark.usefixtures("midday")
+
 
 @pytest.fixture
 def clinic(org_a, make_member):

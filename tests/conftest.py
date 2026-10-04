@@ -53,3 +53,13 @@ def org_a(make_org):
 @pytest.fixture
 def org_b(make_org):
     return make_org("other", "شركة تانية")
+
+
+@pytest.fixture
+def midday():
+    """For tests that book "now + N minutes" and then look at *today*: pin the clock to midday in Cairo (and
+    outside quiet hours) so they don't fail late at night when "now + N" crosses midnight. The clock still ticks."""
+    from freezegun import freeze_time
+
+    with freeze_time("2026-10-05 12:00:00+03:00", tick=True):
+        yield

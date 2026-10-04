@@ -1,0 +1,55 @@
+{% load i18n %}
+<div class="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4 pt-20" onclick="if (event.target === this) this.parentElement.innerHTML = ''">
+  <div class="card w-full max-w-md p-5">
+    <div class="mb-3 flex items-center justify-between">
+      <h2 class="font-bold">{% blocktranslate with p=a.patient.full_name %}تأجيل {{ p }}{% endblocktranslate %}</h2>
+      <button type="button" class="text-stone-400 hover:text-ink" onclick="document.getElementById('modal').innerHTML = ''" aria-label="×">×</button>
+    </div>
+    {% if error %}
+    <p class="text-sm font-semibold text-red-700">{{ error }}</p>
+    {% else %}
+    <p class="mb-3 text-sm text-stone-500">
+      {% translate "دلوقتي" %}: <bdi dir="ltr">{{ a.start_at|date:"Y-m-d H:i" }}</bdi>{% if a.queue_number %} · <bdi dir="ltr">#{{ a.queue_number }}</bdi>{% endif %}
+    </p>
+    <div class="form-field mb-3">
+      <label for="rs-day">{% translate "اليوم الجديد" %}</label>
+      <input id="rs-day" type="date" name="day" value="{{ day|date:'Y-m-d' }}"
+             hx-get="{% url 'scheduling:reschedule_options' a.pk %}" hx-trigger="change" hx-target="#modal">
+    </div>
+    <form method="post" action="{% url 'scheduling:reschedule_confirm' a.pk %}" class="space-y-3">
+      {% csrf_token %}
+      <input type="hidden" name="week" value="{{ a.date|date:'Y-m-d' }}">
+      {% if slots is not None %}
+        {% if slots %}
+        <div class="grid max-h-64 grid-cols-4 gap-1 overflow-y-auto">
+          {% for s in slots %}
+          <label class="cursor-pointer rounded-md border border-stone-200 px-1 py-1.5 text-center font-mono text-sm has-[:checked]:border-brand has-[:checked]:bg-brand/10" dir="ltr">
+            <input type="radio" name="start_at" value="{{ s.isoformat }}" class="sr-only" required {% if forloop.first %}checked{% endif %}>{{ s|date:"H:i" }}
+          </label>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-stone-500">{% translate "مفيش مواعيد فاضية اليوم ده." %}</p>
+        {% endif %}
+      {% else %}
+        <input type="hidden" name="day" value="{{ day|date:'Y-m-d' }}">
+        {% for p in periods %}
+        <label class="flex cursor-pointer items-center gap-2 rounded-md border border-stone-200 px-3 py-2 text-sm has-[:checked]:border-brand">
+          <input type="radio" name="period_key" value="{{ p.period_id }}" required {% if p.remaining == 0 %}disabled{% elif forloop.first %}checked{% endif %}>
+          <span dir="ltr">{{ p.label_start|date:"H:i" }}</span>
+          <span class="text-stone-500">{% blocktranslate with n=p.next_number %}رقم {{ n }}{% endblocktranslate %} · {% translate "حوالي" %} <span dir="ltr">{{ p.estimated_time|date:"H:i" }}</span></span>
+          {% if p.remaining == 0 %}<span class="ms-auto text-xs text-red-600">{% translate "مليان" %}</span>{% endif %}
+        </label>
+        {% empty %}
+        <p class="text-sm text-stone-500">{% translate "اليوم ده مفيهوش شغل." %}</p>
+        {% endfor %}
+      {% endif %}
+      <p class="text-xs text-stone-500">{% translate "المريض هتوصله رسالة بالميعاد الجديد، والتذكيرات القديمة هتتلغي." %}</p>
+      <div class="flex justify-end gap-2">
+        <button type="button" class="btn-ghost" onclick="document.getElementById('modal').innerHTML = ''">{% translate "رجوع" %}</button>
+        <button class="btn-primary" {% if slots is not None and not slots %}disabled{% elif periods is not None and not periods %}disabled{% endif %}>{% translate "تأكيد التأجيل" %}</button>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</div>

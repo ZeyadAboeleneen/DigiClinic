@@ -3,20 +3,24 @@ from datetime import date, datetime, timedelta
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.translation import gettext as _
+from django.views.decorators.http import require_POST
 
 from apps.accounts.permissions import has_perm, require_perm
 from apps.audit import services as audit
 from apps.core.ratelimit import search_limit
-from apps.core.timeutils import CAIRO
-from apps.doctors.models import BookingMode, VisitType
+from apps.core.timeutils import CAIRO, WEEKDAY_LABELS, weekday_egypt
+from apps.doctors.models import BookingMode, ScheduleException, ScheduleExceptionKind, VisitType
 from apps.doctors.services import get_doctor
 from apps.notifications.models import Event, MessageStatus
+from apps.notifications.templating import fmt_time
 from apps.patients import services as patient_services
 from apps.patients.forms import PatientForm
 from apps.patients.models import Patient
 
 from . import services
+from .availability import periods_for
 from .models import ACTIVE_STATUSES, Appointment, AppointmentStatus
 
 
@@ -226,3 +230,123 @@ def affected_reschedule(request, pk):
     except services.BookingError as e:
         messages.error(request, str(e))
     return redirect(f"{reverse('scheduling:affected')}?date={appt.date}")
+
+
+# --- week calendar (03 §3.3) -----------------------------------------------------------------
+
+STATUS_ICONS = {
+    AppointmentStatus.BOOKED: "○",
+    AppointmentStatus.CONFIRMED: "✓",
+    AppointmentStatus.ARRIVED: "●",
+    AppointmentStatus.IN_CONSULTATION: "▶",
+    AppointmentStatus.COMPLETED: "✔",
+    AppointmentStatus.NO_SHOW: "✕",
+}
+
+
+def week_start(day: date) -> date:
+    """Egyptian week: Saturday → Friday."""
+    return day - timedelta(days=weekday_egypt(day))
+
+
+@require_perm("appointment.view")
+def appointments_week(request):
+    doctor = get_doctor(request.organization)
+    start = week_start(_parse_day(request.GET.get("date")))
+    days = [start + timedelta(days=i) for i in range(7)]
+    appts = (
+        Appointment.objects.for_org(request.organization)
+        .filter(doctor=doctor, date__gte=days[0], date__lte=days[-1])
+        .exclude(status__in=[AppointmentStatus.CANCELLED, AppointmentStatus.RESCHEDULED])
+        .select_related("patient", "visit_type")
+        .order_by("start_at")
+    )
+    exceptions = {}
+    for exc in ScheduleException.objects.filter(doctor=doctor, date__gte=days[0], date__lte=days[-1]):
+        exceptions.setdefault(exc.date, []).append(exc)
+    by_day = {d: [] for d in days}
+    for a in appts:
+        a.icon = STATUS_ICONS.get(a.status, "")
+        by_day[a.date].append(a)
+    today = timezone.localtime(timezone.now(), CAIRO).date()
+    columns = [
+        {
+            "day": d,
+            "label": WEEKDAY_LABELS[weekday_egypt(d)],
+            "periods": [f"{fmt_time(p.start_at)} – {fmt_time(p.end_at)}" for p in periods_for(doctor, d)],
+            "exceptions": exceptions.get(d, []),
+            "appointments": by_day[d],
+            "is_today": d == today,
+            "is_past": d < today,
+        }
+        for d in days
+    ]
+    ctx = {
+        "doctor": doctor,
+        "columns": columns,
+        "start": days[0],
+        "end": days[-1],
+        "prev_week": days[0] - timedelta(days=7),
+        "next_week": days[0] + timedelta(days=7),
+        "today": today,
+    }
+    return render(request, "scheduling/appointments_week.html", ctx)
+
+
+@require_perm("appointment.reschedule")
+def reschedule_options(request, pk):
+    """Modal for moving an appointment (drag to another day, or the "تأجيل" button): that day's free times."""
+    appt = _appt(request, pk)
+    if not appt.is_active or appt.status not in (AppointmentStatus.BOOKED, AppointmentStatus.CONFIRMED):
+        return render(request, "scheduling/partials/reschedule_modal.html",
+                      {"a": appt, "error": _("الحجز ده مينفعش يتأجل دلوقتي.")})  # fmt: skip
+    doctor = appt.doctor
+    day = _parse_day(request.GET.get("day") or appt.date.isoformat())
+    ctx = {"a": appt, "day": day, "doctor": doctor}
+    if doctor.booking_mode == BookingMode.SLOTS:
+        ctx["slots"] = services.free_slots(doctor, appt.visit_type, day)
+    else:
+        ctx["periods"] = services.queue_availability(doctor, day)
+    return render(request, "scheduling/partials/reschedule_modal.html", ctx)
+
+
+@require_POST
+@require_perm("appointment.reschedule")
+def reschedule_confirm(request, pk):
+    appt = _appt(request, pk)
+    week = request.POST.get("week") or appt.date.isoformat()
+    try:
+        if appt.doctor.booking_mode == BookingMode.SLOTS:
+            start_at = datetime.fromisoformat(request.POST["start_at"])
+            if start_at.tzinfo is None:
+                start_at = start_at.replace(tzinfo=CAIRO)
+            new = services.reschedule(appt, by=request.user, new_start_at=start_at, reason=_("تأجيل من التقويم"))
+        else:
+            new = services.reschedule(appt, by=request.user, new_day=_parse_day(request.POST.get("day")),
+                                      new_period_key=request.POST.get("period_key"),
+                                      reason=_("تأجيل من التقويم"))  # fmt: skip
+    except (KeyError, ValueError, services.BookingError) as e:
+        messages.error(request, str(e) or _("اختار ميعاد."))
+        return redirect(f"{reverse('scheduling:appointments_week')}?date={week}")
+    audit.log("appointment.rescheduled", request=request, target=new, summary=appt.patient.full_name)
+    when = f"#{new.queue_number}" if new.queue_number else new.start_at.astimezone(CAIRO).strftime("%Y/%m/%d %H:%M")
+    messages.success(request, _("اتأجل لـ%(w)s — والمريض هتوصله رسالة بالتعديل.") % {"w": when})
+    return redirect(f"{reverse('scheduling:appointments_week')}?date={new.date.isoformat()}")
+
+
+@require_POST
+@require_perm("schedule.manage")
+def close_day(request):
+    """ "قفل يوم" from the calendar → closed exception → the affected-bookings screen if anything is booked (12 §5)."""
+    doctor = get_doctor(request.organization)
+    day = _parse_day(request.POST.get("date"))
+    _exc, created = ScheduleException.objects.get_or_create(
+        organization=request.organization, doctor=doctor, date=day, kind=ScheduleExceptionKind.CLOSED,
+        defaults={"reason": request.POST.get("reason", "")[:150]},
+    )  # fmt: skip
+    if created:
+        audit.log("settings.doctor", request=request, summary=f"{_('قفل يوم')}: {day}")
+    if services.affected_by_closing(doctor, day):
+        return redirect(f"{reverse('scheduling:affected')}?date={day.isoformat()}")
+    messages.success(request, _("اليوم اتقفل."))
+    return redirect(f"{reverse('scheduling:appointments_week')}?date={day.isoformat()}")

@@ -9,6 +9,7 @@ import pytest
 from django.core.management import call_command
 from django.urls import reverse
 from django.utils import timezone
+from freezegun import freeze_time
 
 from apps.clinical import services as clinical
 from apps.doctors.models import Doctor, VisitType, WorkingPeriod
@@ -21,6 +22,8 @@ from apps.prescriptions import safety, services
 from apps.prescriptions.models import Drug, Prescription, PrescriptionSettings, RxStatus
 from apps.scheduling import services as booking
 from apps.scheduling.models import AppointmentStatus
+
+pytestmark = pytest.mark.usefixtures("midday")
 
 FAKE_PDF = b"%PDF-1.4 fake"
 
@@ -194,6 +197,7 @@ def gateway(settings):
     return sent
 
 
+@freeze_time("2026-10-05 12:00:00+03:00")  # outside quiet hours: sending is immediate
 def test_prescription_sent_as_pdf_after_visit(world, gateway, django_capture_on_commit_callbacks):
     NotificationSettings.objects.filter(organization=world["org"]).update(send_prescription_after_visit=True)
     with django_capture_on_commit_callbacks(execute=True):
@@ -220,6 +224,7 @@ def test_no_sending_when_disabled_or_unticked(world, django_capture_on_commit_ca
     assert not ScheduledMessage.objects.filter(event=Event.PRESCRIPTION).exists()
 
 
+@freeze_time("2026-10-05 12:00:00+03:00")
 def test_prescription_by_email_has_attachment(world, django_capture_on_commit_callbacks, mailoutbox):
     from apps.messaging.models import SendingChannelConfig
 

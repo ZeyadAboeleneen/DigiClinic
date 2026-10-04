@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "المواعيد" %}{% endblock %}
+{% block content %}
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+  <h1 class="text-2xl font-bold">{% translate "المواعيد" %}</h1>
+  <div class="flex items-center gap-2">
+    <div class="flex rounded-lg border border-stone-300 text-sm">
+      <a href="{% url 'scheduling:appointments_day' %}?date={{ today|date:'Y-m-d' }}" class="px-3 py-1.5 text-stone-600">{% translate "يوم" %}</a>
+      <span class="rounded-lg bg-stone-100 px-3 py-1.5 font-semibold">{% translate "أسبوع" %}</span>
+    </div>
+    {% if can.appointment_book %}<a href="{% url 'scheduling:booking_home' %}" class="btn-primary">+ {% translate "حجز جديد" %}</a>{% endif %}
+  </div>
+</div>
+
+<div class="mb-4 flex items-center gap-3 text-sm">
+  <a href="?date={{ prev_week|date:'Y-m-d' }}" class="btn-ghost" aria-label="{% translate 'الأسبوع اللي فات' %}">→</a>
+  <span class="font-mono font-bold" dir="ltr">{{ start|date:"Y-m-d" }} – {{ end|date:"Y-m-d" }}</span>
+  <a href="?date={{ next_week|date:'Y-m-d' }}" class="btn-ghost" aria-label="{% translate 'الأسبوع الجاي' %}">←</a>
+  <a href="?date={{ today|date:'Y-m-d' }}" class="btn-ghost text-xs">{% translate "الأسبوع ده" %}</a>
+  {% if can.appointment_reschedule %}<span class="hidden text-xs text-stone-500 lg:inline">{% translate "اسحب الحجز ليوم تاني عشان تأجله." %}</span>{% endif %}
+</div>
+
+<div class="grid gap-3 lg:grid-cols-7" id="week">
+  {% for col in columns %}
+  <section class="card flex min-h-40 flex-col p-2 {% if col.is_today %}ring-2 ring-brand{% endif %} {% if not col.periods %}bg-stone-50{% endif %}"
+           data-day="{{ col.day|date:'Y-m-d' }}" {% if not col.is_past %}data-drop{% endif %}>
+    <header class="mb-2 flex items-start justify-between gap-1 border-b border-stone-100 pb-1">
+      <a href="{% url 'scheduling:appointments_day' %}?date={{ col.day|date:'Y-m-d' }}" class="font-bold hover:text-brand">
+        {{ col.label }} <span class="font-mono text-xs font-normal text-stone-500" dir="ltr">{{ col.day|date:"d/m" }}</span>
+      </a>
+      {% if can.schedule_manage and col.periods and not col.is_past %}
+      <form method="post" action="{% url 'scheduling:close_day' %}" onsubmit="return confirm('{% translate 'تقفل اليوم ده؟ الحجوزات اللي فيه هتظهرلك عشان تأجلها.' %}')">
+        {% csrf_token %}<input type="hidden" name="date" value="{{ col.day|date:'Y-m-d' }}">
+        <button class="text-xs text-stone-400 hover:text-red-600" title="{% translate 'قفل اليوم' %}">{% translate "قفل" %}</button>
+      </form>
+      {% endif %}
+    </header>
+    <div class="mb-2 space-y-0.5 text-xs">
+      {% for exc in col.exceptions %}
+      <div class="rounded {% if exc.kind == 'closed' %}bg-red-50 text-red-700{% else %}bg-amber-50 text-amber-700{% endif %} px-1.5 py-0.5">{{ exc.get_kind_display }}{% if exc.reason %}: {{ exc.reason }}{% endif %}</div>
+      {% endfor %}
+      {% for p in col.periods %}<div class="text-stone-500">{{ p }}</div>{% empty %}<div class="font-semibold text-stone-400">{% translate "مفيش شغل" %}</div>{% endfor %}
+    </div>
+    <ul class="flex-1 space-y-1">
+      {% for a in col.appointments %}
+      {% with movable=can.appointment_reschedule %}
+      <li class="rounded-md border-s-4 bg-white px-1.5 py-1 text-xs shadow-sm {% if a.status == 'booked' or a.status == 'confirmed' %}{% if movable %}cursor-grab{% endif %}{% else %}opacity-70{% endif %}"
+          style="border-color:{{ a.visit_type.color }}"
+          {% if movable and a.status == 'booked' or movable and a.status == 'confirmed' %}draggable="true" data-appt="{{ a.pk }}" data-options="{% url 'scheduling:reschedule_options' a.pk %}"{% endif %}>
+        <div class="flex items-center gap-1">
+          <span title="{{ a.get_status_display }}">{{ a.icon }}</span>
+          <span class="font-mono" dir="ltr">{% if a.queue_number %}#{{ a.queue_number }}{% else %}{{ a.start_at|date:"H:i" }}{% endif %}</span>
+          <span class="truncate font-semibold">{{ a.patient.full_name }}</span>
+        </div>
+        <div class="flex items-center justify-between gap-1 text-stone-500">
+          <span class="truncate">{{ a.visit_type.name_ar }}</span>
+          {% if movable and a.status == 'booked' or movable and a.status == 'confirmed' %}
+          <button type="button" class="text-brand" hx-get="{% url 'scheduling:reschedule_options' a.pk %}" hx-target="#modal">{% translate "تأجيل" %}</button>
+          {% endif %}
+        </div>
+      </li>
+      {% endwith %}
+      {% empty %}
+      <li class="text-xs text-stone-300">—</li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+</div>
+
+<div class="mt-3 flex flex-wrap gap-3 text-xs text-stone-500">
+  <span>○ {% translate "محجوز" %}</span><span>✓ {% translate "مؤكد" %}</span><span>● {% translate "وصل" %}</span>
+  <span>▶ {% translate "جوه الكشف" %}</span><span>✔ {% translate "خلص" %}</span><span>✕ {% translate "لم يحضر" %}</span>
+</div>
+
+<div id="modal"></div>
+
+<script>
+  // 03 §3.3: drag an appointment onto another day = reschedule (the dialog shows that day's free times to confirm).
+  (() => {
+    let dragged = null;
+    document.querySelectorAll("#week [data-appt]").forEach((el) => {
+      el.addEventListener("dragstart", (e) => { dragged = el; e.dataTransfer.effectAllowed = "move"; el.classList.add("opacity-50"); });
+      el.addEventListener("dragend", () => { el.classList.remove("opacity-50"); dragged = null; });
+    });
+    document.querySelectorAll("#week [data-drop]").forEach((col) => {
+      col.addEventListener("dragover", (e) => { if (dragged) { e.preventDefault(); col.classList.add("ring-2", "ring-amber-400"); } });
+      col.addEventListener("dragleave", () => col.classList.remove("ring-2", "ring-amber-400"));
+      col.addEventListener("drop", (e) => {
+        e.preventDefault();
+        col.classList.remove("ring-2", "ring-amber-400");
+        if (!dragged) return;
+        htmx.ajax("GET", `${dragged.dataset.options}?day=${col.dataset.day}`, { target: "#modal" });
+      });
+    });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") document.getElementById("modal").innerHTML = ""; });
+  })();
+</script>
+{% endblock %}

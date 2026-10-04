@@ -279,3 +279,9 @@ gotchas and conventions introduced in that phase.
 - Patient page now shows bookings, payments (payment.record) and sent + inbound messages (messages.view).
 - N+1 guard: `tests/test_performance.py` compares warm query counts at small vs large data — keep it green when
   touching the reception/desk screens.
+- Week calendar (03 §3.3, added after Phase 9): `/appointments/week/?date=` (Saturday→Friday, `views.week_start`),
+  day/week toggle on both views. Each day shows its working periods (`periods_for`) or "مفيش شغل", exceptions with
+  reason, bookings colored by `VisitType.color` + status icon. Drag a booked/confirmed card onto a future day (native
+  HTML5 DnD) or press "تأجيل" (phones) → `reschedule_options` dialog with that day's free slots / queue periods →
+  `reschedule_confirm` → `services.reschedule()` (so the patient gets the "rescheduled" message and old reminders are
+  cancelled). "قفل" per day (`close_day`, schedule.manage) → closed exception → affected-bookings screen if needed.

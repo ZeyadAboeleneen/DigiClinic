@@ -52,7 +52,7 @@
       </a>
       {% endif %}
       {% if can.appointment_view %}
-      <a href="{% url 'scheduling:appointments_day' %}" class="nav-link {% if url_name == 'scheduling:appointments_day' %}active{% endif %}">
+      <a href="{% url 'scheduling:appointments_day' %}" class="nav-link {% if url_name == 'scheduling:appointments_day' or url_name == 'scheduling:appointments_week' %}active{% endif %}">
         <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v4M16 2v4M3 9h18M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/></svg>
         {% translate "المواعيد" %}
       </a>
