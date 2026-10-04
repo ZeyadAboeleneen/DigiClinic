@@ -117,6 +117,8 @@ AXES_USERNAME_FORM_FIELD = "username"
 AXES_USERNAME_CALLABLE = "apps.accounts.axes.get_username"
 
 # Sessions: expire after 12 hours of inactivity.
+# Doctor-desk idle lock. 04 §4.1 said 15 min; changed to 6 h at the clinic's request (2026-10-04).
+DESK_IDLE_LOCK_MINUTES = env.int("DESK_IDLE_LOCK_MINUTES", default=6 * 60)
 SESSION_COOKIE_AGE = 8 * 60 * 60  # 04 §4.1: 8h of inactivity
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_COOKIE_HTTPONLY = True

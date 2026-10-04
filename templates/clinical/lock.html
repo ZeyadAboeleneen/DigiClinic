@@ -6,7 +6,7 @@
   <form method="post" action="{% url 'clinical:unlock' %}" class="card space-y-4 p-6 text-center">
     {% csrf_token %}
     <div class="text-4xl">🔒</div>
-    <h1 class="text-lg font-bold">{% translate "الشاشة اتقفلت بعد 15 دقيقة من غير استخدام" %}</h1>
+    <h1 class="text-lg font-bold">{% translate "الشاشة اتقفلت عشان مكانش فيه استخدام لفترة" %}</h1>
     <p class="text-sm text-stone-500">{% blocktranslate with u=request.user.get_short_name %}اكتب كلمة المرور بتاعة {{ u }} عشان تكمل. اللي اتكتب قبل القفل محفوظ.{% endblocktranslate %}</p>
     <input type="hidden" name="next" value="{{ next }}">
     <input type="password" name="password" autofocus autocomplete="current-password" required

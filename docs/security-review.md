@@ -8,7 +8,7 @@ Date: 2026-10-04 · Scope: everything up to `phase-8`. ✅ done & tested · 🔧
 | Session auth, Argon2, invites (48 h), password reset | ✅ | inherited; `tests/test_auth.py`, `test_invitations.py` |
 | django-axes 5 attempts / 15 min | ✅ | `tests/test_auth.py` |
 | Session timeout 8 h of inactivity | 🔧 (was 12 h, fixed in Phase 6) | `SESSION_COOKIE_AGE`, `SESSION_SAVE_EVERY_REQUEST` |
-| Doctor screen locks after 15 idle min, password to unlock | ✅ server-enforced (session flag, HTTP 423) | `test_idle_lock_is_enforced_server_side` |
+| Doctor screen locks after idle time, password to unlock | ✅ server-enforced (session flag, HTTP 423). Changed from 15 min to **6 h** at the clinic's request — weaker if the screen faces patients; set `DESK_IDLE_LOCK_MINUTES` to shorten | `test_idle_lock_is_enforced_server_side` |
 | 2FA (TOTP) for owner/admin | ⏳ "مرحلة لاحقة" in the plan | — |
 
 ## 4.3 Permission matrix

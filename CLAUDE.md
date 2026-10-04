@@ -204,7 +204,7 @@ gotchas and conventions introduced in that phase.
 - Autosave: per field, 1 s debounce + on change/blur, `navigator.sendBeacon` flush on `pagehide`/hidden, **plus a
   localStorage draft per field** re-applied on load until the server confirms — closing the tab mid-sentence loses
   nothing (an immediate reload could otherwise race the beacon).
-- Idle lock (04 §4.1): JS posts `/desk/lock/` after 15 idle minutes; the `desk_unlocked` decorator then serves the
+- Idle lock (04 §4.1, changed from 15 min to **6 h** at the clinic's request; `DESK_IDLE_LOCK_MINUTES`): JS posts `/desk/lock/` after that many idle minutes; the `desk_unlocked` decorator then serves the
   lock page (HTTP 423) for every desk view until `/desk/unlock/` gets the user's password. Session age is now 8 h.
 - Permissions: `clinical.view`/`clinical.edit` (doctor/owner), `attachment.upload` (reception/doctor/owner —
   reception uploads from the patient page but can't list/view attachments). `test_reception_gets_403_on_every_

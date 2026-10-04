@@ -302,3 +302,10 @@ def test_big_phone_photo_is_shrunk_and_rotated(world):
 def test_small_png_is_kept_as_is(world):
     att = services.add_attachment(patient=world["patients"][0], f=_png(), kind="lab")
     assert att.content_type == "image/png"
+
+
+def test_idle_lock_delay_comes_from_settings(client, world, settings):
+    client.force_login(world["doc"])
+    assert "const IDLE_MS = 360 * 60 * 1000;" in client.get(reverse("clinical:desk")).content.decode()
+    settings.DESK_IDLE_LOCK_MINUTES = 30
+    assert "const IDLE_MS = 30 * 60 * 1000;" in client.get(reverse("clinical:desk")).content.decode()

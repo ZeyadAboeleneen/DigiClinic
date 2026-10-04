@@ -29,10 +29,10 @@
 <script src="{% static 'src/dictation.js' %}" defer></script>
 {% endif %}
 <script>
-  // 04 §4.1: lock the doctor's screen after 15 idle minutes. The lock is enforced server-side (session flag);
+  // 04 §4.1: lock the doctor's screen after DESK_IDLE_LOCK_MINUTES idle minutes (6 h by default). The lock is enforced server-side (session flag);
   // this only notices the idleness. Autosave means nothing typed is lost.
   (() => {
-    const IDLE_MS = 15 * 60 * 1000;
+    const IDLE_MS = {{ desk_idle_lock_minutes|default:360 }} * 60 * 1000;
     let last = Date.now();
     ["mousemove", "keydown", "click", "scroll", "touchstart"].forEach((e) =>
       document.addEventListener(e, () => (last = Date.now()), { passive: true }));
