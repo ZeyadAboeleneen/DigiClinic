@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "الإعدادات" %}{% endblock %}
+{% block content %}
+<h1 class="mb-6 text-2xl font-bold">{% translate "الإعدادات" %}</h1>
+
+{% include "partials/settings_tabs.html" %}
+
+<section class="card p-4 sm:p-6">
+  <h2 class="mb-4 font-bold">{% translate "أنواع الزيارات" %}</h2>
+  <div id="visit-types">{% include "doctors/partials/visit_types.html" %}</div>
+</section>
+{% endblock %}

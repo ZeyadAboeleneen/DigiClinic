@@ -12,6 +12,8 @@ ACTION_LABELS = {
     "delivery.sent": _("اتبعت"),
     "delivery.failed": _("فشل الإرسال"),
     "settings.company": _("تعديل بيانات الشركة"),
+    "settings.doctor": _("تعديل جدول الدكتور"),
+    "settings.visit_type": _("تعديل نوع زيارة"),
     "settings.email": _("تعديل إعدادات الإيميل"),
     "whatsapp.connect": _("ربط واتساب"),
     "whatsapp.disconnect": _("فصل واتساب"),

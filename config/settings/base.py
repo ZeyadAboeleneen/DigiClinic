@@ -29,6 +29,8 @@ INSTALLED_APPS = [
     "apps.documents",
     "apps.messaging",
     "apps.audit",
+    "apps.doctors",
+    "apps.scheduling",
 ]
 
 MIDDLEWARE = [

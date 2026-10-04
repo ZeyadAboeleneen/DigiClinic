@@ -1,0 +1,43 @@
+{% load i18n %}
+<div class="space-y-3">
+  {% for weekday, label, day_periods in by_weekday %}
+  <details class="border-b border-stone-100 pb-2">
+    <summary class="flex cursor-pointer flex-wrap items-center gap-2 py-1">
+      <span class="w-20 shrink-0 text-sm font-semibold">{{ label }}</span>
+      <div class="flex flex-1 flex-wrap gap-2">
+        {% for p in day_periods %}
+        <span class="badge flex items-center gap-2 bg-stone-100 text-stone-700" dir="ltr">
+          {{ p.start_time|time:"H:i" }}–{{ p.end_time|time:"H:i" }}
+          {% if p.max_patients %}<span class="text-xs text-stone-400">({{ p.max_patients }})</span>{% endif %}
+          <button type="button" class="text-red-600"
+                  hx-post="{% url 'doctors:period_delete' p.pk %}" hx-target="#periods" hx-swap="innerHTML"
+                  hx-confirm="{% translate 'تمسح الفترة دي؟' %}">×</button>
+        </span>
+        {% empty %}
+        <span class="text-xs text-stone-400">{% translate "مفيش فترات" %}</span>
+        {% endfor %}
+      </div>
+      <span class="btn-ghost text-xs">+ {% translate "فترة" %}</span>
+    </summary>
+    <form class="mt-2 flex flex-wrap items-end gap-2"
+          hx-post="{% url 'doctors:period_add' %}" hx-target="#periods" hx-swap="innerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="weekday" value="{{ weekday }}">
+      <div>
+        <label class="block text-xs text-stone-500">{% translate "من" %}</label>
+        <input type="time" name="start_time" class="rounded-lg border border-stone-300 bg-white px-2 py-1 text-sm" required>
+      </div>
+      <div>
+        <label class="block text-xs text-stone-500">{% translate "إلى" %}</label>
+        <input type="time" name="end_time" class="rounded-lg border border-stone-300 bg-white px-2 py-1 text-sm" required>
+      </div>
+      <div>
+        <label class="block text-xs text-stone-500">{% translate "الطاقة (دور)" %}</label>
+        <input type="number" name="max_patients" class="w-24 rounded-lg border border-stone-300 bg-white px-2 py-1 text-sm" min="0">
+      </div>
+      <button type="submit" class="btn-primary text-sm">{% translate "إضافة" %}</button>
+    </form>
+  </details>
+  {% endfor %}
+  {% if period_form.errors %}<p class="text-sm text-red-600">{{ period_form.errors }}</p>{% endif %}
+</div>

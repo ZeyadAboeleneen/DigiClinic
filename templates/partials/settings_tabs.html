@@ -1,6 +1,8 @@
 {% load i18n %}
 <div class="mb-4 flex flex-wrap gap-x-1 border-b border-stone-200 text-sm font-semibold">
-  <a href="{% url 'organizations:settings' %}" class="whitespace-nowrap px-3 py-2 {% if tab == 'company' %}border-b-2 border-brand text-brand{% else %}text-stone-500 hover:text-ink{% endif %}">{% translate "بيانات الشركة" %}</a>
+  <a href="{% url 'organizations:settings' %}" class="whitespace-nowrap px-3 py-2 {% if tab == 'company' %}border-b-2 border-brand text-brand{% else %}text-stone-500 hover:text-ink{% endif %}">{% translate "العيادة" %}</a>
+  <a href="{% url 'doctors:schedule' %}" class="whitespace-nowrap px-3 py-2 {% if tab == 'schedule' %}border-b-2 border-brand text-brand{% else %}text-stone-500 hover:text-ink{% endif %}">{% translate "الدكتور والمواعيد" %}</a>
+  <a href="{% url 'doctors:visit_types' %}" class="whitespace-nowrap px-3 py-2 {% if tab == 'visit_types' %}border-b-2 border-brand text-brand{% else %}text-stone-500 hover:text-ink{% endif %}">{% translate "أنواع الزيارات" %}</a>
   <a href="{% url 'messaging:email_settings' %}" class="whitespace-nowrap px-3 py-2 {% if tab == 'email' %}border-b-2 border-brand text-brand{% else %}text-stone-500 hover:text-ink{% endif %}">{% translate "الإرسال بالإيميل" %}</a>
   <a href="{% url 'messaging:whatsapp' %}" class="whitespace-nowrap px-3 py-2 {% if tab == 'whatsapp' %}border-b-2 border-brand text-brand{% else %}text-stone-500 hover:text-ink{% endif %}">{% translate "واتساب" %}</a>
 </div>

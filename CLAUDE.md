@@ -60,3 +60,17 @@ No Node build step for the Django app; HTMX/Alpine/fonts vendored in `static/`.
 ## Update this file
 At the end of each phase, add a short "<App> notes" section here (like Al-Barq's CLAUDE.md had) with the commands,
 gotchas and conventions introduced in that phase.
+
+## Doctors notes (Phase 1)
+- `apps/doctors`: `Doctor` (single row per org in v1 — `views._get_doctor(org)` gets-or-creates it on first visit
+  to the settings screen), `WorkingPeriod`, `ScheduleException` (`closed`/`custom`/`extra`), `VisitType`.
+  `simple-history` on `Doctor`/`WorkingPeriod`/`VisitType`.
+- `apps/core/timeutils.py`: `CAIRO` zoneinfo, `weekday_egypt()` (Python Monday=0..Sunday=6 → Egyptian
+  Saturday=0..Friday=6: `(python_weekday + 2) % 7`), `local_dt()` builds a DST-correct aware datetime directly
+  from a `date` + `time` — never do manual UTC offset math for clinic hours.
+- `apps/scheduling/availability.periods_for(doctor, day)` is the only place that resolves a day's actual working
+  periods (weekly schedule + exceptions). `scheduling` has no models yet — `Appointment`/`DayLedger` land in Phase 3.
+- Settings screens live under `org/settings/doctor/` (profile + weekly grid + exceptions, HTMX partials swapped
+  in place) and `org/settings/visit-types/`. Both gated by the `schedule.manage` permission (doctor/admin/owner).
+- `seed_org` now also seeds the doctor/working periods/visit types from `clinic.json`'s `doctor`/`working_periods`/
+  `visit_types` keys (same create-or-skip-unless-`--force` rule as the org settings).

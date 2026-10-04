@@ -1,7 +1,7 @@
 """Single source of truth for role → permission mapping (docs/plan/04-auth-permissions-security.md §4.3).
 
-Phase 0 only wires up the permissions the surviving apps (accounts/organizations/audit/messaging) need.
-Clinical, scheduling, patient and billing permissions from the matrix are added as those apps land.
+Each phase wires up the permissions its new apps need; clinical, patient and billing permissions
+from the matrix are added as those apps land.
 """
 
 from functools import wraps
@@ -13,11 +13,14 @@ from apps.organizations.models import Role
 
 VIEWER = set()
 RECEPTION = VIEWER | set()
-DOCTOR = VIEWER | set()
+DOCTOR = VIEWER | {
+    "schedule.manage",
+}
 ADMIN = VIEWER | {
     "user.manage",
     "settings.manage",
     "audit.view",
+    "schedule.manage",
 }
 OWNER = ADMIN | DOCTOR | RECEPTION
 

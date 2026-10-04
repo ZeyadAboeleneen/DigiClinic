@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "الإعدادات" %}{% endblock %}
+{% block content %}
+<h1 class="mb-6 text-2xl font-bold">{% translate "الإعدادات" %}</h1>
+
+{% include "partials/settings_tabs.html" %}
+
+<form method="post" class="card space-y-4 p-4 sm:p-6" novalidate>
+  {% csrf_token %}
+  <h2 class="font-bold">{% translate "بيانات الدكتور" %}</h2>
+  <div class="grid gap-4 sm:grid-cols-2">
+    {% include "partials/field.html" with field=form.name_ar %}
+    {% include "partials/field.html" with field=form.name_en %}
+    {% include "partials/field.html" with field=form.title_ar %}
+    {% include "partials/field.html" with field=form.specialty_ar %}
+  </div>
+  {% include "partials/field.html" with field=form.qualifications_text %}
+
+  <h2 class="pt-2 font-bold">{% translate "طريقة الحجز" %}</h2>
+  <div class="grid gap-4 sm:grid-cols-3">
+    {% include "partials/field.html" with field=form.booking_mode %}
+    {% include "partials/field.html" with field=form.slot_minutes %}
+    {% include "partials/field.html" with field=form.queue_avg_minutes %}
+    {% include "partials/field.html" with field=form.near_turn_threshold %}
+    {% include "partials/field.html" with field=form.booking_horizon_days %}
+    {% include "partials/field.html" with field=form.min_notice_minutes %}
+  </div>
+  <label class="flex items-center gap-2 text-sm">{{ form.allow_overbooking }} {% translate "يسمح بحجز استثنائي فوق الطاقة" %}</label>
+
+  <div class="flex justify-end">
+    <button type="submit" class="btn-primary">{% translate "حفظ" %}</button>
+  </div>
+</form>
+
+<section class="card mt-6 p-4 sm:p-6">
+  <h2 class="mb-4 font-bold">{% translate "جدول الأسبوع" %}</h2>
+  <div id="periods">{% include "doctors/partials/periods.html" %}</div>
+</section>
+
+<section class="card mt-6 p-4 sm:p-6">
+  <h2 class="mb-4 font-bold">{% translate "الاستثناءات" %}</h2>
+  <div id="exceptions">{% include "doctors/partials/exceptions.html" %}</div>
+</section>
+{% endblock %}
