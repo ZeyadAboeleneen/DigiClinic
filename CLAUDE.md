@@ -157,3 +157,31 @@ gotchas and conventions introduced in that phase.
   run by `run.bat` after `seed_org`, idempotent.
 - Local setup gotcha: on this machine pip under Python 3.10 fails TLS verification (intercepting proxy/AV);
   uv was installed with `C:\Python313\python.exe -m pip install --user uv` and `run.bat` now sets `UV_NATIVE_TLS=1`.
+
+## Reception notes (Phase 5)
+- New apps: `reception` (screen only, no models), `billing` (`Payment`; `services.balance()` computes
+  due/paid/status — pass a prefetched payments list to avoid N+1; `record_payment()`; `cashbox(org, day)`), and
+  `clinical` with `Visit` + `Vitals` **created early** because vitals are recorded at check-in (Vitals is a
+  OneToOne on Visit per the schema). `Visit.for_appointment(appt)` get-or-creates the open visit. Visit's own
+  `history` TextField (medical history) clashes with simple-history's default name, so its HistoricalRecords
+  manager is `Visit.records`. Phase 6 builds the doctor desk on these models.
+- `scheduling.services` additions: `walk_in()` (same-day book + immediately `arrived`, source=walk_in → no
+  confirmation), `mark_no_show()` (applies `no_show_policy`; auto-rebook via `find_rebook_slot` = closest time of
+  day, `auto_rebook_after_days` later, within `auto_rebook_window_days`; never for an appointment that is itself
+  `auto_rebooked_from` something), `undo_no_show()` (cancels the auto-rebooking **silently** — `cancel(notify=False)`),
+  `due_no_shows()/mark_no_shows()` (scheduler job every 2 min: slots → `start + grace`; queue → after the period
+  ends, or never when `no_show_queue_mark_at=manual`). `transition()` backwards ("رجوع خطوة") clears the
+  undone step's timestamp.
+- `notifications.on_no_show(appt, rebooked)` and `on_queue_progress(doctor, day)` (fired on_commit by
+  `transition()` to in_consultation/completed for queue appointments). "Ahead" counts every earlier number not yet
+  completed/no-show/cancelled — the patient currently with the doctor counts. `near_turn` is never skipped for
+  "time passed" (queue estimates run late), only if the patient already arrived.
+- Reception screen `/reception/` (`reception.operate`: reception/doctor/owner — **admin does not get it**, per the
+  matrix). Polls `/reception/rows/?sig=` every 5 s; the server returns 204 when the row signature is unchanged, and
+  polling pauses while a modal is open. Actions return the fresh rows partial + an `HX-Trigger: toast` event;
+  invalid modal forms come back with `HX-Retarget: #modal`. "خلص" is on the reception screen for now (the doctor
+  desk takes over in Phase 6). Cashbox `/cashbox/` (`payment.record`).
+- New permissions: `reception.operate`, `vitals.record`, `payment.record` (reception/doctor/owner),
+  `report.finance` (doctor/owner, used by Phase 9 reports).
+- `simulate_day [--remove]` books 10 seed_demo patients today through the real services (3 done+paid, 1 with the
+  doctor, 2 waiting with vitals, 1 no-show, rest booked) and cancels every outbox row it caused — nothing is sent.

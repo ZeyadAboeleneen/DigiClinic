@@ -109,7 +109,7 @@ class Dispatcher:
                 if appt.status == AppointmentStatus.ARRIVED and row.event == Event.NEAR_TURN:
                     return MessageStatus.SKIPPED, _("المريض وصل")
                 return MessageStatus.CANCELLED, _("الحجز بقى: %(s)s") % {"s": appt.get_status_display()}
-            if row.event in (Event.REMINDER, Event.BOOKING_CONFIRMED, Event.NEAR_TURN):
+            if row.event in (Event.REMINDER, Event.BOOKING_CONFIRMED):  # queue estimates may run late: not near_turn
                 lead = row.template.min_lead_minutes if row.template else 0
                 if appt.start_at - now < timedelta(minutes=lead) or appt.start_at < now:
                     return MessageStatus.SKIPPED, _("فات وقتها")

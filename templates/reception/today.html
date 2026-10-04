@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "الاستقبال" %}{% endblock %}
+{% block content %}
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-bold">{% translate "النهارده" %} {{ day_label }}</h1>
+    <p class="text-sm text-stone-500">
+      {{ doctor }}
+      {% for p in periods %} · {{ p }}{% empty %} · {% translate "مفيش مواعيد شغل النهارده" %}{% endfor %}
+    </p>
+  </div>
+  <div class="flex gap-2">
+    {% if can.payment_record %}<a href="{% url 'billing:cashbox' %}" class="btn-secondary">{% translate "الخزنة" %}</a>{% endif %}
+    <a href="{% url 'reception:walk_in' %}" class="btn-primary">+ {% translate "حجز فوري (walk-in)" %}</a>
+  </div>
+</div>
+
+<div id="reception"
+     hx-get="{% url 'reception:rows' %}" hx-trigger="every 5s [!document.querySelector('#modal > *')]" hx-swap="innerHTML"
+     hx-vals='js:{sig: (document.getElementById("rows-sig") || {}).value || ""}'>
+  {% include "reception/partials/rows.html" %}
+</div>
+
+<div id="modal"></div>
+
+<script>
+  // Actions return fresh rows: close the modal and show the server's toast.
+  document.body.addEventListener("toast", (e) => {
+    const box = document.createElement("div");
+    box.className = "fixed inset-x-0 bottom-4 z-[60] mx-auto w-full max-w-md rounded-lg px-4 py-3 text-sm font-semibold text-white shadow-lg " + (e.detail.error ? "bg-red-700" : "bg-ink");
+    box.textContent = e.detail.text;
+    document.body.appendChild(box);
+    setTimeout(() => box.remove(), 5000);
+  });
+  document.body.addEventListener("htmx:afterSwap", (e) => {
+    if (e.detail.target.id === "reception") document.getElementById("modal").innerHTML = "";
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") document.getElementById("modal").innerHTML = "";
+  });
+</script>
+{% endblock %}

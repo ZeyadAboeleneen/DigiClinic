@@ -1,0 +1,13 @@
+{% extends "reception/partials/modal.html" %}
+{% load i18n %}
+{% block title %}{% blocktranslate with p=a.patient.full_name %}وصول {{ p }}{% endblocktranslate %}{% endblock %}
+{% block body %}
+<form hx-post="{% url 'reception:arrive' a.pk %}" hx-target="#reception" class="space-y-4" novalidate>
+  {% if can_vitals %}
+  <p class="text-xs text-stone-500">{% translate "العلامات الحيوية اختيارية — Tab بين الخانات وEnter للحفظ." %}</p>
+  {% include "reception/partials/vitals_fields.html" %}
+  {% endif %}
+  <button class="btn-primary w-full" autofocus>{% translate "وصل" %}</button>
+</form>
+<script>document.querySelector("#modal input")?.focus();</script>
+{% endblock %}

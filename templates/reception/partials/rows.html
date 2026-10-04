@@ -1,0 +1,60 @@
+{% load i18n %}
+<input type="hidden" id="rows-sig" value="{{ sig }}">
+<div class="mb-4 flex flex-wrap gap-2 text-sm">
+  <span class="badge bg-stone-100 px-3 py-1 text-stone-700">{% translate "محجوز" %} {{ counts.booked }}</span>
+  <span class="badge bg-amber-50 px-3 py-1 text-amber-700">{% translate "وصل" %} {{ counts.arrived }}</span>
+  <span class="badge bg-sky-50 px-3 py-1 text-sky-700">{% translate "عند الدكتور" %} {{ counts.in_consultation }}</span>
+  <span class="badge bg-green-50 px-3 py-1 text-green-700">{% translate "تم" %} {{ counts.completed }}</span>
+  <span class="badge bg-red-50 px-3 py-1 text-red-700">{% translate "لم يحضر" %} {{ counts.no_show }}</span>
+</div>
+
+<div class="card overflow-x-auto">
+  <table class="w-full text-sm">
+    <tbody class="divide-y divide-stone-100">
+    {% for r in rows %}{% with a=r.a %}
+      <tr class="{% if a.status == 'arrived' %}bg-amber-50/60{% elif a.status == 'in_consultation' %}bg-sky-50/60{% elif a.status == 'completed' or a.status == 'no_show' %}text-stone-400{% endif %}">
+        <td class="whitespace-nowrap px-3 py-2 font-mono" dir="ltr">{% if a.queue_number %}#{{ a.queue_number }}{% else %}{{ a.start_at|date:"g:i" }}{% endif %}</td>
+        <td class="px-3 py-2">
+          {% if can.patient_view_basic %}<a href="{% url 'patients:detail' a.patient.pk %}" class="font-semibold hover:text-brand">{{ a.patient.full_name }}</a>{% else %}<span class="font-semibold">{{ a.patient.full_name }}</span>{% endif %}
+          {% if a.source == "walk_in" %}<span class="badge bg-stone-100 text-stone-500">{% translate "فوري" %}</span>{% endif %}
+        </td>
+        <td class="px-3 py-2 text-stone-500">{{ a.visit_type.name_ar }}</td>
+        <td class="whitespace-nowrap px-3 py-2">
+          {% if a.status == "arrived" %}● {% translate "وصل" %} <span dir="ltr">{{ a.arrived_at|date:"g:i" }}</span> <span class="text-xs text-stone-500">({% blocktranslate with m=r.waiting %}مستني {{ m }} دقيقة{% endblocktranslate %})</span>
+          {% elif r.late_minutes %}<span class="font-semibold text-red-700">⚠ {% blocktranslate with m=r.late_minutes %}متأخر {{ m }} دقيقة{% endblocktranslate %}</span>
+          {% else %}{{ a.get_status_display }}{% endif %}
+        </td>
+        <td class="whitespace-nowrap px-3 py-2">
+          {% if r.balance.status == "free" %}<span class="text-stone-500">{% translate "مجانية" %}</span>
+          {% elif r.balance.status == "paid" %}<span dir="ltr">{{ r.balance.due|floatformat:0 }}</span> <span class="text-green-700">✓ {% translate "مدفوع" %}</span>
+          {% elif r.balance.status == "partial" %}<span dir="ltr">{{ r.balance.paid|floatformat:0 }}/{{ r.balance.due|floatformat:0 }}</span> <span class="text-amber-700">{% translate "جزئي" %}</span>
+          {% else %}<span dir="ltr">{{ r.balance.due|floatformat:0 }}</span>{% endif %}
+        </td>
+        <td class="whitespace-nowrap px-3 py-2 text-end">
+          <div class="flex items-center justify-end gap-1" x-data="{ more: false }">
+            {% if a.status == "booked" or a.status == "confirmed" %}
+              <button class="btn-primary px-3 py-1 text-xs" hx-get="{% url 'reception:arrive' a.pk %}" hx-target="#modal">{% translate "وصل" %}</button>
+              {% if r.late_minutes or a.queue_number %}<button class="btn-ghost text-xs text-red-600" hx-post="{% url 'reception:step' a.pk 'no_show' %}" hx-target="#reception" hx-confirm="{% translate 'تعلمه لم يحضر؟' %}">{% translate "لم يحضر" %}</button>{% endif %}
+            {% elif a.status == "arrived" %}
+              <button class="btn-primary px-3 py-1 text-xs" hx-post="{% url 'reception:step' a.pk 'call' %}" hx-target="#reception">{% translate "دخّل" %}</button>
+            {% elif a.status == "in_consultation" %}
+              <button class="btn-secondary px-3 py-1 text-xs" hx-post="{% url 'reception:step' a.pk 'complete' %}" hx-target="#reception">{% translate "خلص" %}</button>
+            {% endif %}
+            <div class="relative">
+              <button class="btn-ghost px-2 text-xs" @click="more = !more" aria-label="{% translate 'المزيد' %}">⋯</button>
+              <div x-show="more" @click.outside="more = false" x-cloak class="absolute end-0 z-20 mt-1 w-44 rounded-lg border border-stone-200 bg-white py-1 text-start shadow-lg">
+                {% if can.payment_record and r.balance.status != "free" %}<button class="block w-full px-3 py-1.5 text-start hover:bg-stone-50" hx-get="{% url 'reception:payment' a.pk %}" hx-target="#modal">{% translate "تسجيل دفع" %}</button>{% endif %}
+                {% if can.vitals_record and a.status != "booked" and a.status != "confirmed" and a.status != "no_show" %}<button class="block w-full px-3 py-1.5 text-start hover:bg-stone-50" hx-get="{% url 'reception:vitals' a.pk %}" hx-target="#modal">{% translate "العلامات الحيوية" %}</button>{% endif %}
+                {% if a.status == "arrived" or a.status == "in_consultation" or a.status == "no_show" %}<button class="block w-full px-3 py-1.5 text-start hover:bg-stone-50" hx-post="{% url 'reception:step' a.pk 'undo' %}" hx-target="#reception">{% translate "رجوع خطوة" %}</button>{% endif %}
+                {% if can.messages_view %}<a class="block px-3 py-1.5 hover:bg-stone-50" href="{% url 'notifications:log' %}?appointment={{ a.pk }}">{% translate "الرسايل" %}</a>{% endif %}
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>
+    {% endwith %}{% empty %}
+      <tr><td class="px-3 py-10 text-center text-stone-500">{% translate "مفيش حجوزات النهارده." %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>

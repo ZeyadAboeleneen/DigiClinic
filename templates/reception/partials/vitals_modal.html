@@ -1,0 +1,9 @@
+{% extends "reception/partials/modal.html" %}
+{% load i18n %}
+{% block title %}{% blocktranslate with p=a.patient.full_name %}العلامات الحيوية — {{ p }}{% endblocktranslate %}{% endblock %}
+{% block body %}
+<form hx-post="{% url 'reception:vitals' a.pk %}" hx-target="#reception" class="space-y-4" novalidate>
+  {% include "reception/partials/vitals_fields.html" %}
+  <button class="btn-primary w-full">{% translate "حفظ" %}</button>
+</form>
+{% endblock %}

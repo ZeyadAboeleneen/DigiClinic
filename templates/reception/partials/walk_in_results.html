@@ -1,0 +1,20 @@
+{% load i18n %}
+<ul class="divide-y divide-stone-100">
+  {% for p in patients %}
+  <li class="py-2">
+    <form method="post" action="{% url 'reception:walk_in' %}" class="flex flex-wrap items-center gap-3 text-sm">
+      {% csrf_token %}
+      <input type="hidden" name="patient" value="{{ p.pk }}">
+      <span class="font-semibold">{{ p.full_name }}</span>
+      <span class="font-mono text-xs text-stone-500" dir="ltr">#{{ p.file_number }} · {{ p.phone }}</span>
+      <select name="visit_type" class="ms-auto rounded-lg border border-stone-300 px-2 py-1 text-sm">
+        {% for vt in visit_types %}<option value="{{ vt.pk }}">{{ vt.name_ar }}</option>{% endfor %}
+      </select>
+      {% if can.appointment_overbook %}<label class="flex items-center gap-1 text-xs"><input type="checkbox" name="overbook" value="1"> {% translate "استثنائي" %}</label>{% endif %}
+      <button class="btn-primary px-3 py-1 text-xs">{% translate "حجز ووصل" %}</button>
+    </form>
+  </li>
+  {% empty %}
+  {% if q %}<li class="py-4 text-center text-sm text-stone-400">{% translate "مفيش نتايج" %}</li>{% endif %}
+  {% endfor %}
+</ul>

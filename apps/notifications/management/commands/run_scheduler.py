@@ -17,6 +17,7 @@ from django.utils import timezone
 from apps.notifications import dispatcher as dispatch
 from apps.notifications.models import SchedulerHeartbeat
 from apps.notifications.services import HEARTBEAT_NAME
+from apps.scheduling import services as booking
 
 ADVISORY_LOCK_ID = 0x44_43_4C_4E  # "DCLN" — one scheduler per database, ever
 
@@ -28,8 +29,9 @@ def beat(now=None):
     )
 
 
-# (name, interval, callable(now)). Phase 5 adds mark_no_shows every 2 minutes here.
+# (name, interval, callable(now)).
 JOBS = [
+    ("mark_no_shows", timedelta(minutes=2), lambda now: booking.mark_no_shows(now)),
     ("dispatch", timedelta(seconds=0), lambda now: dispatch.dispatcher.run_once(now)),
     ("cleanup", timedelta(days=1), lambda now: dispatch.cleanup(now)),
 ]

@@ -1,0 +1,20 @@
+{% extends "reception/partials/modal.html" %}
+{% load i18n %}
+{% block title %}{% blocktranslate with p=a.patient.full_name %}تسجيل دفع — {{ p }}{% endblocktranslate %}{% endblock %}
+{% block body %}
+<dl class="mb-4 grid grid-cols-3 gap-2 text-center text-sm">
+  <div class="rounded-lg bg-stone-50 p-2"><dt class="text-xs text-stone-500">{% translate "المستحق" %}</dt><dd class="font-bold" dir="ltr">{{ balance.due|floatformat:0 }}</dd></div>
+  <div class="rounded-lg bg-stone-50 p-2"><dt class="text-xs text-stone-500">{% translate "اتدفع" %}</dt><dd class="font-bold" dir="ltr">{{ balance.paid|floatformat:0 }}</dd></div>
+  <div class="rounded-lg bg-stone-50 p-2"><dt class="text-xs text-stone-500">{% translate "الباقي" %}</dt><dd class="font-bold" dir="ltr">{{ balance.remaining|floatformat:0 }}</dd></div>
+</dl>
+<form hx-post="{% url 'reception:payment' a.pk %}" hx-target="#reception" class="space-y-3" novalidate>
+  <div class="grid grid-cols-2 gap-3">
+    {% include "partials/field.html" with field=form.amount %}
+    {% include "partials/field.html" with field=form.method %}
+  </div>
+  {% include "partials/field.html" with field=form.note %}
+  <label class="flex items-center gap-2 text-sm">{{ form.is_refund }} {{ form.is_refund.label }}</label>
+  <button class="btn-primary w-full">{% translate "تسجيل" %}</button>
+</form>
+<script>document.querySelector("#modal input")?.select();</script>
+{% endblock %}

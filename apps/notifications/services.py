@@ -219,6 +219,63 @@ def on_cancelled(appt, *, by=None, now=None):
     return enqueue(appt=appt, template=tpl, event=Event.CANCELLED, send_at=now, by=by)
 
 
+def on_no_show(appt, *, rebooked=None, by=None, now=None):
+    """12 §7: "no_show_rebooked" (about the new appointment, + its reminders) or "no_show_missed"."""
+    now = now or timezone.now()
+    cancel_pending(appt, _("لم يحضر"))
+    ns = NotificationSettings.for_org(appt.organization)
+    if rebooked is not None:
+        tpl = _first_template(appt.organization, Event.NO_SHOW_REBOOKED, rebooked.doctor.booking_mode)
+        rows = (
+            enqueue(appt=rebooked, template=tpl, event=Event.NO_SHOW_REBOOKED, send_at=now, by=by, ns=ns) if tpl else []
+        )
+        return rows + schedule_reminders(rebooked, by=by, ns=ns, now=now)
+    tpl = _first_template(appt.organization, Event.NO_SHOW_MISSED, appt.doctor.booking_mode)
+    if tpl is None:
+        return []
+    return enqueue(appt=appt, template=tpl, event=Event.NO_SHOW_MISSED, send_at=now, by=by, ns=ns)
+
+
+def on_queue_progress(doctor, day, *, now=None):
+    """06 §6.4 "دورك قرّب": message every booked patient who hasn't arrived yet and has at most
+    `near_turn_threshold` unfinished patients ahead of them in the same period. Once per appointment (dedupe)."""
+    from apps.doctors.models import BookingMode
+    from apps.scheduling.models import Appointment, AppointmentStatus
+
+    threshold = doctor.near_turn_threshold
+    if not threshold or doctor.booking_mode != BookingMode.QUEUE:
+        return []
+    now = now or timezone.now()
+    unfinished = {
+        AppointmentStatus.BOOKED,
+        AppointmentStatus.CONFIRMED,
+        AppointmentStatus.ARRIVED,
+        AppointmentStatus.IN_CONSULTATION,
+    }
+    appts = list(
+        Appointment.objects.filter(
+            organization=doctor.organization, doctor=doctor, date=day, status__in=unfinished, queue_number__isnull=False
+        )
+        .select_related("patient", "doctor", "organization")
+        .order_by("period_key", "queue_number")
+    )
+    tpl = _first_template(doctor.organization, Event.NEAR_TURN, doctor.booking_mode)
+    if tpl is None:
+        return []
+    ns = NotificationSettings.for_org(doctor.organization)
+    rows = []
+    for appt in appts:
+        if appt.status not in (AppointmentStatus.BOOKED, AppointmentStatus.CONFIRMED):
+            continue
+        ahead = sum(
+            1 for other in appts if other.period_key == appt.period_key and other.queue_number < appt.queue_number
+        )
+        if ahead <= threshold:
+            rows += enqueue(appt=appt, template=tpl, event=Event.NEAR_TURN, send_at=now,
+                            context={"patients_ahead": ahead}, ns=ns)  # fmt: skip
+    return rows
+
+
 def create_test_message(org, *, channel, recipient, body, subject="", by=None):
     """A one-off test row (templates screen "ابعت تجربة"); the dispatcher sends it right away."""
     now = timezone.now()

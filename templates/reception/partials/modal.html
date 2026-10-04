@@ -1,0 +1,10 @@
+{% load i18n %}
+<div class="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4 pt-20" onclick="if (event.target === this) this.parentElement.innerHTML = ''">
+  <div class="card w-full max-w-md p-5">
+    <div class="mb-4 flex items-center justify-between">
+      <h2 class="font-bold">{% block title %}{% endblock %}</h2>
+      <button type="button" class="text-stone-400 hover:text-ink" onclick="document.getElementById('modal').innerHTML = ''" aria-label="×">×</button>
+    </div>
+    {% block body %}{% endblock %}
+  </div>
+</div>

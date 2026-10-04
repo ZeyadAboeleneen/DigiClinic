@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "حجز فوري" %}{% endblock %}
+{% block content %}
+<div class="mb-4 flex items-center justify-between">
+  <h1 class="text-2xl font-bold">{% translate "حجز فوري (walk-in)" %}</h1>
+  <a href="{% url 'reception:today' %}" class="btn-ghost">{% translate "رجوع للاستقبال" %}</a>
+</div>
+<div class="card p-4 sm:p-6">
+  <div class="form-field">
+    <label for="q">{% translate "الموبايل أو الاسم أو رقم الملف" %}</label>
+    <input id="q" name="q" value="{{ q }}" autofocus autocomplete="off"
+           hx-get="{% url 'reception:walk_in' %}" hx-trigger="input changed delay:250ms, load" hx-target="#results">
+  </div>
+  <div id="results" class="mt-4">{% include "reception/partials/walk_in_results.html" %}</div>
+  {% if can.patient_edit_basic %}
+  <p class="mt-4 text-sm text-stone-500">{% translate "مريض جديد؟" %} <a href="{% url 'scheduling:booking_home' %}" class="font-semibold text-brand">{% translate "ضيفه من شاشة الحجز الأول" %}</a></p>
+  {% endif %}
+</div>
+{% endblock %}
