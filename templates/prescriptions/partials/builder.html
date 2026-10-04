@@ -15,14 +15,14 @@
   <div class="card space-y-3 p-4">
     <form class="flex gap-2" hx-post="{% url 'prescriptions:item_add' rx.pk %}" hx-target="#rx-builder" hx-swap="outerHTML">
       <div class="relative flex-1">
-        <input id="rx-search" name="drug_name" autocomplete="off" dir="auto" placeholder="{% translate 'ابحث أو اكتب اسم الدوا…' %}"
+        <input id="rx-search" name="drug_name" autocomplete="off" dir="auto"
+               data-dictate="rx" data-dictate-url="{% url 'prescriptions:dictate' rx.pk %}" data-dictate-target="#rx-dictation" placeholder="{% translate 'ابحث أو اكتب اسم الدوا…' %}"
                class="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
                hx-get="{% url 'prescriptions:drug_search' rx.pk %}" hx-trigger="input changed delay:200ms" hx-target="#drug-results"
                onkeydown="const first = document.querySelector('#drug-results button');
                           if (event.key === 'ArrowDown' && first) { first.focus(); event.preventDefault(); }
                           if (event.key === 'Enter' && first) { first.click(); event.preventDefault(); }">
         <div id="drug-results" class="absolute inset-x-0 z-20"></div>
-        {# Phase 8 mounts the 🎤 dictation button here (data-dictation-target) #}
       </div>
       {# type=button: Enter in the search box must not "submit" through this button (that would force free text). #}
       <button type="button" class="btn-secondary whitespace-nowrap" title="{% translate 'إضافة النص زي ما هو (دوا مش في الكتالوج)' %}"
@@ -87,7 +87,7 @@
   <div class="card grid gap-3 p-4 sm:grid-cols-3">
     <div class="form-field sm:col-span-2">
       <label for="rx-advice">{% translate "نصايح" %}</label>
-      <textarea id="rx-advice" name="advice" rows="2" dir="auto" hx-post="{% url 'prescriptions:fields' rx.pk %}" hx-trigger="input changed delay:800ms, change" hx-target="#rx-fields-status">{{ rx.advice }}</textarea>
+      <textarea id="rx-advice" name="advice" rows="2" dir="auto" data-dictate hx-post="{% url 'prescriptions:fields' rx.pk %}" hx-trigger="input changed delay:800ms, change" hx-target="#rx-fields-status">{{ rx.advice }}</textarea>
     </div>
     <div class="space-y-3">
       <div class="form-field">

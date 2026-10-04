@@ -1,0 +1,31 @@
+{% load i18n %}
+{% if lines %}
+<div class="card space-y-2 border-amber-200 p-3">
+  <div class="flex items-center justify-between">
+    <h3 class="text-sm font-bold">🎤 {% translate "اللي اتقال — اختار الدوا الصح لكل سطر" %}</h3>
+    <button type="button" class="btn-ghost text-xs" onclick="document.getElementById('rx-dictation').innerHTML = ''">{% translate "قفل" %}</button>
+  </div>
+  {% for line in lines %}
+  <div class="rounded-lg bg-stone-50 p-2 text-sm" data-dictated-line>
+    <p class="mb-1 text-stone-600" dir="auto">«{{ line.text }}»</p>
+    {% if line.instructions %}<p class="mb-1 text-xs text-stone-500">{% translate "الجرعة" %}: <span dir="auto">{{ line.instructions }}</span></p>{% endif %}
+    <div class="flex flex-wrap gap-1">
+      {% for c in line.candidates %}
+      <button type="button" class="rounded-md border border-stone-300 bg-white px-2 py-1 text-xs hover:border-brand {% if forloop.first %}font-semibold{% endif %}"
+              hx-post="{% url 'prescriptions:dictate_add' rx.pk %}" hx-target="#rx-builder" hx-swap="outerHTML"
+              hx-on::after-request="if (event.detail.successful) this.closest('[data-dictated-line]').remove()"
+              hx-vals='{"drug": "{{ c.drug.pk }}", "spoken": "{{ c.spoken|escapejs }}", "instructions": "{{ line.instructions|escapejs }}"}'>
+        <span dir="ltr">{{ c.drug.name }}</span> <span class="text-stone-400">{{ c.score|floatformat:0 }}%</span>
+      </button>
+      {% empty %}
+      <span class="text-xs text-stone-500">{% translate "مفيش دوا قريب في الكتالوج." %}</span>
+      {% endfor %}
+      <button type="button" class="rounded-md px-2 py-1 text-xs text-stone-500 underline"
+              hx-post="{% url 'prescriptions:dictate_add' rx.pk %}" hx-target="#rx-builder" hx-swap="outerHTML"
+              hx-on::after-request="if (event.detail.successful) this.closest('[data-dictated-line]').remove()"
+              hx-vals='{"spoken": "{{ line.text|escapejs }}"}'>{% translate "اكتبه زي ما اتقال" %}</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

@@ -17,7 +17,7 @@ from apps.clinical.views import desk_unlocked
 from apps.documents import pdf as engine
 from apps.notifications.models import NotificationSettings
 
-from . import pdf, safety, services
+from . import matching, pdf, safety, services
 from .forms import DrugForm, PrescriptionSettingsForm, RxNotifyForm
 from .models import (
     DRUG_FORMS,
@@ -242,6 +242,44 @@ def item_to_catalog(request, item_pk):
     if item.prescription.is_editable:
         PrescriptionItem.objects.filter(pk=item.pk).update(drug=drug)
     return _builder(request, item.prescription, notice=_("%(d)s اتضاف للكتالوج") % {"d": drug.name})
+
+
+# --- voice dictation (13 §13.3) ---------------------------------------------------------------
+
+
+@require_POST
+@require_perm("prescription.write")
+@desk_unlocked
+def dictate(request, pk):
+    """Dictated text → one row per spoken line with the top-3 catalog matches. Nothing is saved here."""
+    rx = _rx(request, pk)
+    lines = matching.match_text(request.organization, request.POST.get("text", "")[:2000])
+    return render(request, "prescriptions/partials/dictation_results.html", {"rx": rx, "lines": lines})
+
+
+@require_POST
+@require_perm("prescription.write")
+@desk_unlocked
+def dictate_add(request, pk):
+    """The doctor picked a suggestion (or "as spoken"): add it flagged `needs_review` (13 §13.4) and learn the alias."""
+    rx = _rx(request, pk)
+    drug = None
+    if request.POST.get("drug", "").isdigit():
+        drug = Drug.objects.filter(organization=request.organization, pk=request.POST["drug"]).first()
+    instructions = request.POST.get("instructions", "").strip()
+    try:
+        services.add_item(
+            rx,
+            drug=drug,
+            drug_name=request.POST.get("spoken", ""),
+            instructions=instructions or None,
+            needs_review=True,
+        )
+    except services.PrescriptionError as e:
+        return _error(request, rx, e)
+    if drug is not None:
+        matching.learn_alias(drug, request.POST.get("spoken", ""))
+    return _builder(request, rx)
 
 
 # --- PDFs ------------------------------------------------------------------------------------

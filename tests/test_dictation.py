@@ -1,0 +1,232 @@
+import io
+from datetime import timedelta
+from decimal import Decimal
+from pathlib import Path
+
+import pytest
+from django.conf import settings
+from django.core.management import call_command
+from django.urls import reverse
+from django.utils import timezone
+
+from apps.clinical import services as clinical
+from apps.doctors.models import Doctor, VisitType, WorkingPeriod
+from apps.patients.models import Gender, Patient
+from apps.prescriptions import matching, services
+from apps.prescriptions.models import Drug, Prescription, PrescriptionSettings
+from apps.scheduling import services as booking
+from apps.scheduling.models import AppointmentStatus
+
+
+@pytest.fixture
+def org(org_a):
+    call_command("import_drugs", org=org_a.slug, stdout=io.StringIO())
+    return org_a
+
+
+def _top(org, text):
+    [line] = matching.match_text(org, text)
+    return line
+
+
+# --- matching (13 §13.5) ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("spoken", "expected"),
+    [
+        ("اوجمنتين", "Augmentin 1g"),
+        ("بنادول اكسترا", "Panadol Extra"),
+        ("فلاجيل", "Flagyl 500"),
+        ("كاتافلام", "Cataflam 50"),
+        ("augmentin", "Augmentin 1g"),
+        ("أوجمنتين", "Augmentin 1g"),  # hamza normalized
+    ],
+)
+def test_spoken_names_match_the_catalog(org, spoken, expected):
+    assert _top(org, spoken).candidates[0].drug.name == expected
+
+
+def test_unknown_word_has_no_suggestion_above_threshold(org):
+    assert _top(org, "زفت طين").candidates == []
+
+
+def test_top_three_and_instructions_from_a_full_sentence(org):
+    lines = matching.match_text(
+        org, "اوجمنتين واحد جرام قرص كل اتناشر ساعة بعد الأكل لمدة اسبوع، بنادول اكسترا عند اللزوم"
+    )
+    assert [line.candidates[0].drug.name for line in lines] == ["Augmentin 1g", "Panadol Extra"]
+    assert len(lines[0].candidates) <= 3
+    assert lines[0].instructions == "قرص كل 12 ساعة بعد الأكل لمدة اسبوع"
+    assert lines[1].instructions == "عند اللزوم"
+
+
+def test_written_numbers_become_digits():
+    assert matching.words_to_numbers("تلات مرات كل اتناشر ساعة ونص قرص") == "3 مرات كل 12 ساعة و½ قرص"
+    assert matching.words_to_numbers("٣ مرات") == "3 مرات"
+
+
+def test_bare_number_kept_unless_it_is_the_strength(org):
+    assert _top(org, "فلاجيل تلات مرات يوميا").instructions == "3 مرات يوميا"
+    assert _top(org, "بروفين اربعمية بعد الأكل").instructions == "بعد الأكل"
+
+
+def test_lines_split_on_commas_and_spoken_new_line():
+    assert matching.split_lines("بنادول، بروفين سطر جديد فلاجيل\nنكسيوم") == ["بنادول", "بروفين", "فلاجيل", "نكسيوم"]
+
+
+def test_learning_from_the_doctors_choice(org):
+    drug = Drug.objects.get(organization=org, name="Zithromax 500")
+    nickname = "المضاد ابو تلات حبايات"  # how this doctor refers to it — nothing like the name
+    assert _top(org, nickname).candidates == []
+    assert matching.learn_alias(drug, nickname)
+    assert not matching.learn_alias(drug, nickname)  # learned once
+    assert not matching.learn_alias(drug, "zz")  # too short / not Arabic
+    assert _top(org, nickname).candidates[0].drug == drug
+
+
+# --- endpoints & review gate (13 §13.4) ------------------------------------------------------
+
+
+@pytest.fixture
+def desk(org, org_b, make_member):
+    doctor = Doctor.objects.create(organization=org, name_ar="سارة", slot_minutes=20)
+    for weekday in range(7):
+        WorkingPeriod.objects.create(organization=org, doctor=doctor, weekday=weekday,
+                                     start_time="00:00", end_time="23:59")  # fmt: skip
+    vt = VisitType.objects.create(organization=org, doctor=doctor, name_ar="كشف", duration_minutes=20,
+                                  price=Decimal("300"))  # fmt: skip
+    patient = Patient.objects.create(organization=org, full_name="منى", phone="+201001234567",
+                                     gender=Gender.FEMALE, file_number=1)  # fmt: skip
+    doc, reception = make_member(org, "doctor"), make_member(org, "reception")
+    appt = booking.book(patient=patient, doctor=doctor, visit_type=vt, by=reception,
+                        start_at=timezone.now() + timedelta(hours=1), overbook=True)  # fmt: skip
+    booking.transition(appt, AppointmentStatus.ARRIVED, by=reception)
+    visit = clinical.start_visit(appt, by=doc)
+    rx = services.draft_for_visit(visit)
+    return {"rx": rx, "doc": doc, "reception": reception, "other": make_member(org_b, "doctor"), "visit": visit}
+
+
+def test_dictated_lines_need_review_before_finalizing(client, desk, org):
+    client.force_login(desk["doc"])
+    rx = desk["rx"]
+    html = client.post(reverse("prescriptions:dictate", args=[rx.pk]),
+                       {"text": "فلاجيل تلات مرات يوميا\nبنادول اكسترا عند اللزوم"}).content.decode()  # fmt: skip
+    assert "Flagyl 500" in html and "Panadol Extra" in html
+    assert rx.items.count() == 0  # nothing saved until the doctor picks
+    flagyl = Drug.objects.get(organization=org, name="Flagyl 500")
+    client.post(reverse("prescriptions:dictate_add", args=[rx.pk]),
+                {"drug": flagyl.pk, "spoken": "فلاجيل", "instructions": "3 مرات يوميا"})  # fmt: skip
+    item = rx.items.get()
+    assert (item.drug, item.instructions, item.needs_review) == (flagyl, "3 مرات يوميا", True)
+    html = client.post(reverse("prescriptions:action", args=[rx.pk, "finalize"])).content.decode()
+    assert "مراجعة" in html
+    assert Prescription.objects.get(pk=rx.pk).status == "draft"
+    client.post(reverse("prescriptions:item_action", args=[item.pk, "confirm"]))
+    client.post(reverse("prescriptions:action", args=[rx.pk, "finalize"]))
+    assert Prescription.objects.get(pk=rx.pk).status == "final"
+
+
+def test_picking_a_drug_teaches_the_alias(client, desk, org):
+    client.force_login(desk["doc"])
+    drug = Drug.objects.get(organization=org, name="Telfast 180")
+    client.post(reverse("prescriptions:dictate_add", args=[desk["rx"].pk]), {"drug": drug.pk, "spoken": "تيلفاست"})
+    drug.refresh_from_db()
+    assert "تيلفاست" in drug.aliases_ar
+
+
+def test_dictation_endpoints_permissions(client, desk):
+    rx = desk["rx"]
+    for user, status in ((desk["reception"], 403), (desk["other"], 404)):
+        client.force_login(user)
+        assert client.post(reverse("prescriptions:dictate", args=[rx.pk]), {"text": "بنادول"}).status_code == status
+        assert client.post(reverse("prescriptions:dictate_add", args=[rx.pk]), {"spoken": "x"}).status_code == status
+
+
+def test_mic_script_only_when_voice_is_enabled(client, desk, org):
+    client.force_login(desk["doc"])
+    url = reverse("clinical:visit", args=[desk["visit"].pk])
+    assert "dictation.js" in client.get(url).content.decode()
+    PrescriptionSettings.objects.filter(organization=org).update(voice_dictation_enabled=False)
+    assert "dictation.js" not in client.get(url).content.decode()
+
+
+# --- dictation.js in a real browser ---------------------------------------------------------
+
+HARNESS = """<!doctype html><html dir="rtl"><body>
+<textarea id="t" data-dictate>أهلا</textarea>
+<p id="note" data-dictation-unsupported hidden>unsupported</p>
+<script>%(fake)s</script>
+<script>%(js)s</script>
+</body></html>"""
+
+FAKE_RECOGNITION = """
+Object.defineProperty(window, "isSecureContext", { value: true });  // the real app runs on https/localhost
+window.webkitSpeechRecognition = class {
+  constructor() { window.__rec = this; }
+  start() { this.started = true; }
+  stop() { this.started = false; this.onend && this.onend(); }
+};
+window.SpeechRecognition = window.webkitSpeechRecognition;  // newer Chromium also has the unprefixed one
+window.__say = (text, isFinal = true) => {
+  const result = [{ transcript: text }]; result.isFinal = isFinal;
+  window.__rec.onresult({ resultIndex: 0, results: [result] });
+};
+"""
+
+
+def _in_browser(fake, scenario):
+    """Playwright's sync API runs an event loop; keep it off the test thread (Django's DB-safety check)."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from apps.documents import pdf as engine
+
+    if not engine._browser_candidates():
+        pytest.skip("Chromium not installed")
+    js = (Path(settings.BASE_DIR) / "static" / "src" / "dictation.js").read_text(encoding="utf-8")
+
+    def run():
+        from playwright.sync_api import sync_playwright
+
+        with sync_playwright() as p:
+            browser = engine._launch(p)
+            try:
+                page = browser.new_page()
+                page.set_content(HARNESS % {"fake": fake, "js": js})
+                return scenario(page)
+            finally:
+                browser.close()
+
+    with ThreadPoolExecutor(1) as pool:
+        return pool.submit(run).result()
+
+
+def test_js_mic_hidden_when_unsupported():
+    def scenario(page):
+        return page.locator(".dictation-mic").count(), page.locator("#note").is_visible()
+
+    assert _in_browser("delete window.webkitSpeechRecognition; delete window.SpeechRecognition;", scenario) == (0, True)
+
+
+def test_js_inserts_final_text_at_cursor_with_commands():
+    def scenario(page):
+        out = {"mics": page.locator(".dictation-mic").count()}
+        page.evaluate("const t = document.getElementById('t'); t.focus(); t.setSelectionRange(4, 4);")
+        page.evaluate(
+            "window.__inputs = 0; document.getElementById('t').addEventListener('input', () => window.__inputs++)"
+        )
+        page.locator(".dictation-mic").click()
+        page.evaluate("window.__say('كحة', false)")
+        out["interim"] = page.locator(".dictation-interim").inner_text()
+        page.evaluate("window.__say('كحة من يومين سطر جديد حرارة نقطة')")
+        out["value"] = page.locator("#t").input_value()
+        out["inputs"] = page.evaluate("window.__inputs")
+        page.locator(".dictation-mic").click()  # second click stops
+        out["started"] = page.evaluate("window.__rec.started")
+        return out
+
+    out = _in_browser(FAKE_RECOGNITION, scenario)
+    assert out["mics"] == 1 and out["interim"] == "كحة"
+    assert out["value"] == "أهلا كحة من يومين\nحرارة."
+    assert out["inputs"] >= 1  # the field's autosave hook fires
+    assert out["started"] is False

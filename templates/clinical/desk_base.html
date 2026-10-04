@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n static %}
 {% block content %}
 <div class="grid gap-6 lg:grid-cols-[16rem_1fr]">
   <aside class="order-2 space-y-4 lg:order-none">
@@ -22,6 +22,12 @@
   <main class="min-w-0">{% block desk %}{% endblock %}</main>
 </div>
 
+{% if voice_enabled %}
+<p data-dictation-unsupported hidden class="fixed bottom-2 start-2 z-40 rounded-lg bg-stone-800 px-3 py-1.5 text-xs text-white opacity-80">
+  {% translate "الإملاء الصوتي شغال على Chrome وEdge بس." %}
+</p>
+<script src="{% static 'src/dictation.js' %}" defer></script>
+{% endif %}
 <script>
   // 04 §4.1: lock the doctor's screen after 15 idle minutes. The lock is enforced server-side (session flag);
   // this only notices the idleness. Autosave means nothing typed is lost.

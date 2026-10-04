@@ -242,3 +242,23 @@ gotchas and conventions introduced in that phase.
 - `import_drugs [csv] [--update]` (run by `run.bat`): create-only unless `--update`; seeds dose phrases once.
 - Local env gotcha found here: `.env` had `MEDIA_ROOT=C:/Users/zeyad/...` from another machine, so no upload/PDF could
   be stored. `MEDIA_ROOT` now defaults to `%LOCALAPPDATA%\digiclinic\media`; leave it empty in `.env`.
+
+## Dictation notes (Phase 8)
+- `static/src/dictation.js` (served as `src/dictation.js`, no build step): any field with `data-dictate` gets a 🎤 +
+  ع/EN toggle (language remembered in localStorage). Click / Ctrl+Space toggles; 3 s silence stops; interim text grey
+  under the field; finals inserted **at the cursor** and fire `input` (so the field's autosave runs). Commands:
+  "سطر جديد" → `\n`, "نقطة" → `.`. Provider interface (`WebSpeechProvider` now; a Whisper provider can be dropped in).
+  Unsupported browser (Firefox/Safari, or non-secure origin) → no mic, and `[data-dictation-unsupported]` is shown.
+- Loaded only on desk pages and only when `PrescriptionSettings.voice_dictation_enabled` (`voice_enabled` in the
+  desk context). HTMX-loaded content is scanned on `htmx:afterSettle`.
+- Prescription mode (`data-dictate="rx"` on the drug search box): finals are collected (each pause = a line) and POSTed
+  to `prescriptions:dictate` → `matching.match_text()` → top-3 suggestions per line in `#rx-dictation` (outside
+  `#rx-builder`, so picking one line keeps the rest). Picking → `dictate_add` adds the line with **`needs_review=True`**
+  (finalize stays blocked until "✓ تأكيد") and `learn_alias()` stores the spoken form on the drug.
+- `apps/prescriptions/matching.py`: normalize (Arabic + digits) → best of the first 1–3 words vs name/generic/aliases
+  with rapidfuzz `WRatio` (threshold 80), ties → longer match, then `usage_count`. The rest of the line becomes the
+  instructions with spoken numbers → digits; a spoken strength ("واحد جرام", or a bare number equal to the drug's own
+  strength) is dropped from the instructions.
+- JS is tested in real headless Chromium from pytest (`tests/test_dictation.py`) with a fake `SpeechRecognition`. Note:
+  newer Chromium has an unprefixed `SpeechRecognition` too, and Playwright must run in a worker thread (its event loop
+  trips Django's async-safety check otherwise).
