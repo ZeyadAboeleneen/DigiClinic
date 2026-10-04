@@ -28,6 +28,10 @@ RECEPTION = VIEWER | {
     "messages.retry",
 }
 DOCTOR = VIEWER | {
+    "prescription.write",
+    "prescription.print",
+    "drug.manage",
+    "rx_template.manage",
     "clinical.view",
     "clinical.edit",
     "attachment.upload",

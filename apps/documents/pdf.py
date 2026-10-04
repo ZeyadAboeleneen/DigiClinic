@@ -5,6 +5,9 @@ touches the network. The prescription-specific rendering (Phase 7) builds on top
 import base64
 import logging
 import mimetypes
+import queue
+import threading
+from concurrent.futures import Future
 from functools import cache
 from pathlib import Path
 
@@ -114,3 +117,65 @@ def html_to_pdf(html: str, footer_html: str = "", *, page_format: str = "A4") ->
             )
         finally:
             browser.close()
+
+
+# --- warm renderer (05 §5.1: the doctor is waiting for the printer, target < 2 s) ----------------------------
+#
+# Playwright's sync API is bound to the thread that started it, and Django serves requests from many threads.
+# So one daemon thread owns a single warm Chromium and renders jobs from a queue; callers block on a Future.
+# If Chromium dies, the next job relaunches it.
+
+_jobs: "queue.Queue[tuple]" = queue.Queue()
+_worker_lock = threading.Lock()
+_worker: threading.Thread | None = None
+
+
+def _worker_loop():
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as p:
+        browser = None
+        try:
+            browser = _launch(p)  # warm up right away: the first print shouldn't pay Chromium's cold start
+        except PdfRenderError:
+            browser = None
+        while True:
+            html, options, fut = _jobs.get()
+            if fut.set_running_or_notify_cancel() is False:
+                continue
+            try:
+                if browser is None or not browser.is_connected():
+                    browser = _launch(p)
+                page = browser.new_page()
+                try:
+                    page.set_content(html, wait_until="load")
+                    page.evaluate("document.fonts.ready")
+                    fut.set_result(page.pdf(**options))
+                finally:
+                    page.close()
+            except Exception as e:  # keep the worker alive; relaunch on the next job
+                logger.exception("PDF render failed")
+                try:
+                    if browser is not None:
+                        browser.close()
+                except Exception:
+                    logger.debug("browser close failed", exc_info=True)
+                browser = None
+                fut.set_exception(e if isinstance(e, PdfRenderError) else PdfRenderError(str(e)))
+
+
+def warm_up():
+    """Start the renderer thread (and Chromium) in the background, e.g. when the prescription tab opens."""
+    global _worker
+    with _worker_lock:
+        if _worker is None or not _worker.is_alive():
+            _worker = threading.Thread(target=_worker_loop, name="pdf-renderer", daemon=True)
+            _worker.start()
+
+
+def render_pdf(html: str, *, timeout: float = 60, **options) -> bytes:
+    """Render with the shared warm browser. `options` go to Playwright's `page.pdf()`."""
+    warm_up()
+    fut: Future = Future()
+    _jobs.put((html, options, fut))
+    return fut.result(timeout=timeout)

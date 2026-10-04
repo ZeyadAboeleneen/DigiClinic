@@ -7,8 +7,10 @@
 {% translate "التاريخ" as l_history %}{% translate "المرفقات" as l_att %}{% translate "البيانات" as l_data %}
 <div class="mb-4 flex flex-wrap gap-x-1 border-b border-stone-200 text-sm font-semibold" id="tabs">
   <button type="button" class="tab-btn whitespace-nowrap border-b-2 border-brand px-3 py-2 text-brand" onclick="showVisitTab(this)">{% translate "الزيارة الحالية" %}</button>
+  {% if can.prescription_write %}<button type="button" class="tab-btn whitespace-nowrap px-3 py-2 text-stone-500" hx-get="{% url 'prescriptions:builder' visit.pk %}" hx-target="#tab-body" onclick="showOtherTab(this)">{% translate "الروشتة" %}</button>{% endif %}
   <button type="button" class="tab-btn whitespace-nowrap px-3 py-2 text-stone-500" hx-get="{{ history_url }}" hx-target="#tab-body" onclick="showOtherTab(this)">{{ l_history }}</button>
   <button type="button" class="tab-btn whitespace-nowrap px-3 py-2 text-stone-500" hx-get="{{ attachments_url }}?visit={{ visit.pk }}" hx-target="#tab-body" onclick="showOtherTab(this)">{{ l_att }}</button>
+  <button type="button" class="tab-btn whitespace-nowrap px-3 py-2 text-stone-500" hx-get="{% url 'prescriptions:patient_list' patient.pk %}" hx-target="#tab-body" onclick="showOtherTab(this)">{% translate "الروشتات" %}</button>
   <button type="button" class="tab-btn whitespace-nowrap px-3 py-2 text-stone-500" hx-get="{{ data_url }}" hx-target="#tab-body" onclick="showOtherTab(this)">{{ l_data }}</button>
 </div>
 

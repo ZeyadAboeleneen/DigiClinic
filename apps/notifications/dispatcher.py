@@ -131,7 +131,10 @@ class Dispatcher:
             row.rendered_text = row.context.get("body", "")
             row.rendered_subject = row.context.get("subject", "") or _("رسالة تجربة من DigiClinic")
             return
-        ctx = templating.appointment_ctx(row.appointment) if row.appointment else {}
+        if row.prescription_id:
+            ctx = templating.prescription_ctx(row.prescription)
+        else:
+            ctx = templating.appointment_ctx(row.appointment) if row.appointment else {}
         ctx.update(row.context or {})
         row.rendered_text = templating.render(row.template.body if row.template else "", ctx)
         subject = (row.template.email_subject if row.template else "") or row.get_event_display()
@@ -140,9 +143,29 @@ class Dispatcher:
 
     # --- providers ---------------------------------------------------------------------------
 
+    def _attachment(self, row):
+        """(bytes, filename) of the prescription's full-design PDF, or None when this message has no attachment."""
+        if not row.prescription_id or not (row.template is None or row.template.attach_pdf):
+            return None
+        from apps.prescriptions.services import ensure_pdf
+
+        rx = row.prescription
+        stored = ensure_pdf(rx)
+        if not stored:
+            raise RuntimeError("prescription PDF could not be rendered")
+        with stored.open("rb") as fh:
+            data = fh.read()
+        name = rx.patient_snapshot.get("name", "").replace(" ", "-")
+        return data, f"روشتة-{name}-{rx.issued_at:%Y-%m-%d}.pdf"
+
     def send(self, row, ns) -> ProviderResult:
         if not row.recipient:
             return ProviderResult(ok=False, error=_("مفيش رقم/إيميل"))
+        try:
+            row._attachment = self._attachment(row)
+        except Exception:
+            logger.exception("attachment failed for scheduled message %s", row.pk)
+            return ProviderResult(ok=False, error=_("الـPDF ماتعملش — هتتعاد المحاولة"), temporary=True)
         if row.channel == MessageChannel.EMAIL:
             return self._send_email(row)
         return self._send_whatsapp(row, ns)
@@ -153,8 +176,13 @@ class Dispatcher:
             return ProviderResult(ok=False, error=_("الإيميل مش متظبط في الإعدادات."))
         try:
             with provider._connection() as conn:
+                att = getattr(row, "_attachment", None)
                 provider.build_message(
-                    to=row.recipient, subject=row.rendered_subject, body=row.rendered_text, connection=conn
+                    to=row.recipient,
+                    subject=row.rendered_subject,
+                    body=row.rendered_text,
+                    attachment=(att[1], att[0], "application/pdf") if att else None,
+                    connection=conn,
                 ).send()
             return ProviderResult(ok=True)
         except Exception as e:
@@ -168,7 +196,12 @@ class Dispatcher:
         if registered is False:
             return ProviderResult(ok=False, error=whatsapp.ERRORS["not_on_whatsapp"])
         self._wait_gap(row.organization_id, ns)
-        result = whatsapp.WhatsAppProvider(row.organization).send_text(row.recipient, row.rendered_text)
+        provider = whatsapp.WhatsAppProvider(row.organization)
+        att = getattr(row, "_attachment", None)
+        if att:
+            result = provider.send_document(row.recipient, row.rendered_text, att[0], att[1])
+        else:
+            result = provider.send_text(row.recipient, row.rendered_text)
         self._last_wa[row.organization_id] = self.monotonic()
         logger.info("whatsapp %s to %s: %s", row.event, mask(row.recipient), "ok" if result.ok else "failed")
         return result

@@ -1,0 +1,2 @@
+{% if error %}<span class="text-red-700" title="{{ error }}">⚠</span>{% else %}<span class="text-green-700">✓</span>{% endif %}
+{% if oob %}<div id="rx-warnings" hx-swap-oob="true">{% include "prescriptions/partials/warnings.html" %}</div>{% endif %}

@@ -16,6 +16,7 @@ echo [4/6] Updating database...
 .venv\Scripts\python manage.py migrate --noinput || goto :error
 .venv\Scripts\python manage.py seed_org || goto :error
 .venv\Scripts\python manage.py seed_notifications || goto :error
+.venv\Scripts\python manage.py import_drugs || goto :error
 echo [5/6] Starting WhatsApp gateway and message scheduler...
 call :whatsapp
 start "DigiClinic Scheduler" /min .venv\Scripts\python manage.py run_scheduler

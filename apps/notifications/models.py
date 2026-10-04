@@ -168,6 +168,9 @@ class ScheduledMessage(TenantScopedModel):
     appointment = models.ForeignKey(
         "scheduling.Appointment", null=True, blank=True, on_delete=models.CASCADE, related_name="messages"
     )
+    prescription = models.ForeignKey(
+        "prescriptions.Prescription", null=True, blank=True, on_delete=models.CASCADE, related_name="messages"
+    )
     template = models.ForeignKey(
         NotificationTemplate, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )

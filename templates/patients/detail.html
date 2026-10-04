@@ -70,4 +70,10 @@
   </form>
 </section>
 {% endif %}
+{% if can_reprint and not can.prescription_write %}
+<section class="card mt-6 p-4 sm:p-6">
+  <h2 class="mb-3 font-bold">{% translate "الروشتات (إعادة طباعة)" %}</h2>
+  <div hx-get="{% url 'prescriptions:patient_list' patient.pk %}" hx-trigger="load"></div>
+</section>
+{% endif %}
 {% endblock %}

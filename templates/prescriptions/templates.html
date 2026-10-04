@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "قوالب الروشتات" %}{% endblock %}
+{% block content %}
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+  <h1 class="text-2xl font-bold">{% translate "قوالب الروشتات" %}</h1>
+  <a href="{% url 'clinical:desk' %}" class="btn-ghost">{% translate "رجوع لشاشة الدكتور" %}</a>
+</div>
+<p class="mb-4 text-sm text-stone-500">{% translate "القوالب بتتعمل من شاشة الروشتة: \"حفظ كقالب\". استخدامها بيضيف أدويتها للروشتة الحالية." %}</p>
+<div class="grid gap-3 sm:grid-cols-2">
+  {% for t in tpls %}
+  <div class="card p-4 text-sm">
+    <div class="mb-2 flex items-center gap-2">
+      <span class="font-bold">{{ t.name }}</span>
+      <span class="text-xs text-stone-400">{{ t.usage_count }}×</span>
+      <form method="post" action="{% url 'prescriptions:template_delete' t.pk %}" class="ms-auto" onsubmit="return confirm('{% translate 'تمسح القالب ده؟' %}')">{% csrf_token %}<button class="btn-ghost text-xs text-red-600">{% translate "مسح" %}</button></form>
+    </div>
+    <ol class="space-y-1">{% for it in t.items.all %}<li><span dir="ltr" class="font-semibold">{{ it.drug_name }}</span> <span class="text-stone-500">{{ it.instructions }}{% if it.duration %} — {{ it.duration }}{% endif %}</span></li>{% endfor %}</ol>
+    {% if t.advice %}<p class="mt-2 text-stone-500">{{ t.advice }}</p>{% endif %}
+  </div>
+  {% empty %}
+  <p class="text-sm text-stone-400">{% translate "مفيش قوالب لسه." %}</p>
+  {% endfor %}
+</div>
+{% endblock %}

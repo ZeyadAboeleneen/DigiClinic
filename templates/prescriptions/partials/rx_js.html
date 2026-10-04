@@ -1,0 +1,30 @@
+<script>
+  // 05 §5.4: print the PDF through a hidden iframe → Chrome opens its print dialog directly.
+  window.printRx = (url) => {
+    let frame = document.getElementById("rx-print-frame");
+    if (frame) frame.remove();
+    frame = document.createElement("iframe");
+    frame.id = "rx-print-frame";
+    frame.style.cssText = "position:fixed;width:0;height:0;border:0;right:0;bottom:0";
+    frame.onload = () => { try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch (e) { window.open(url, "_blank"); } };
+    frame.src = url;
+    document.body.appendChild(frame);
+  };
+  // Dose phrases: insert into the last focused instructions/duration cell of the prescription builder.
+  (() => {
+    let lastCell = null;
+    document.addEventListener("focusin", (e) => { if (e.target.matches?.(".rx-instr, .rx-duration")) lastCell = e.target; });
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest?.("#rx-phrases button[data-text]");
+      if (!btn) return;
+      let cell = lastCell && document.contains(lastCell) ? lastCell : document.querySelector(".rx-instr:last-of-type");
+      if (!cell) return;
+      if (btn.dataset.kind === "duration") cell = cell.parentElement.querySelector(".rx-duration") || cell;
+      else if (cell.classList.contains("rx-duration")) cell = cell.parentElement.querySelector(".rx-instr") || cell;
+      const text = btn.dataset.text;
+      cell.value = btn.dataset.kind === "duration" || !cell.value.trim() ? text : `${cell.value.trim()} ${text}`;
+      cell.dispatchEvent(new Event("input", { bubbles: true }));
+      cell.focus();
+    });
+  })();
+</script>

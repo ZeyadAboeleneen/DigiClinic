@@ -1,0 +1,21 @@
+{% load i18n %}
+<ul class="space-y-2">
+  {% for rx in prescriptions %}
+  <li class="card flex flex-wrap items-start gap-3 p-3 text-sm">
+    <span class="font-mono" dir="ltr">{{ rx.display_number }}</span>
+    <span class="text-stone-500" dir="ltr">{{ rx.issued_at|date:"Y-m-d" }}</span>
+    {% if rx.status == "voided" %}<span class="badge bg-red-50 text-red-700">{% translate "ملغية" %}</span>{% endif %}
+    {% if show_items %}
+    <span class="basis-full text-stone-600" dir="ltr">{% for it in rx.items.all %}{{ it.drug_name }}{% if not forloop.last %} · {% endif %}{% endfor %}</span>
+    {% endif %}
+    {% if rx.status == "final" %}
+    <span class="ms-auto flex gap-2">
+      <button type="button" class="btn-ghost text-xs" onclick="printRx('{% url 'prescriptions:pdf' rx.pk %}?mode=print')">{% translate "طباعة" %}</button>
+      <a class="btn-ghost text-xs" href="{% url 'prescriptions:pdf' rx.pk %}" target="_blank">PDF</a>
+    </span>
+    {% endif %}
+  </li>
+  {% empty %}
+  <li class="py-4 text-center text-sm text-stone-400">{% translate "مفيش روشتات." %}</li>
+  {% endfor %}
+</ul>

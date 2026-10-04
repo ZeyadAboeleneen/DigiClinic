@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<style>
+{{ fonts|safe }}
+@page { size: {{ s.page_size }}; margin: 0; }
+html, body { margin: 0; padding: 0; font-family: "Cairo", "Poppins", sans-serif; }
+.page { position: relative; width: {{ width }}mm; height: {{ height }}mm; overflow: hidden; }
+.v, .h { position: absolute; background: #999; }
+.v { top: 0; bottom: 0; width: 0.15mm; }
+.h { left: 0; right: 0; height: 0.15mm; }
+.label { position: absolute; font-size: 6pt; color: #333; direction: ltr; font-family: "Poppins", sans-serif; }
+.box { position: absolute; border: 0.4mm dashed #AE171C; }
+.help { position: absolute; left: 20mm; right: 20mm; top: 45%; text-align: center; font-size: 9pt; background: rgba(255,255,255,.9); padding: 2mm; }
+</style>
+</head>
+<body>
+<div class="page">
+  {% for x in xs %}<div class="v" style="left:{{ x }}mm"></div><div class="label" style="left:{{ x }}mm;top:1mm">{{ x }}</div>{% endfor %}
+  {% for y in ys %}<div class="h" style="top:{{ y }}mm"></div><div class="label" style="top:{{ y }}mm;left:1mm">{{ y }}</div>{% endfor %}
+  <div class="box" style="top:{{ s.margin_top_mm }}mm;bottom:{{ s.margin_bottom_mm }}mm;right:{{ s.margin_right_mm }}mm;left:{{ s.margin_left_mm }}mm"></div>
+  <div class="help">
+    صفحة معايرة — اطبعيها على ورقة العيادة المطبوعة (Scale 100%) وقيسي بالمللي من حافة الورقة لحد ما الهيدر يخلص ولحد ما الفوتر يبدأ.<br>
+    الإطار الأحمر المتقطع = المكان اللي الروشتة هتتكتب فيه بالهوامش الحالية:
+    فوق {{ s.margin_top_mm }} · تحت {{ s.margin_bottom_mm }} · يمين {{ s.margin_right_mm }} · شمال {{ s.margin_left_mm }} مم
+  </div>
+</div>
+</body>
+</html>

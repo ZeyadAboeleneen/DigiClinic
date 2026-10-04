@@ -4,6 +4,7 @@ from django.utils.translation import gettext as _
 
 from apps.accounts.permissions import has_perm, require_perm
 from apps.audit import services as audit
+from apps.prescriptions import views as rx_views
 
 from . import services
 from .forms import AllergyForm, ChronicConditionForm, PatientForm
@@ -55,6 +56,7 @@ def patient_detail(request, pk):
         "can_view_medical": can_view_medical,
         "allergy_form": AllergyForm(),
         "condition_form": ChronicConditionForm(),
+        "can_reprint": rx_views.can_print(request),
     }
     if can_view_medical:
         ctx["chronic_conditions"] = patient.chronic_conditions.all()

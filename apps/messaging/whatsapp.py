@@ -95,11 +95,15 @@ class WhatsAppProvider:
         )
 
     def send(self, delivery, pdf_bytes: bytes, pdf_name: str) -> ProviderResult:
+        """MessagingProvider interface (providers.py)."""
+        return self.send_document(delivery.recipient, delivery.message_text, pdf_bytes, pdf_name)
+
+    def send_document(self, to_e164: str, caption: str, pdf_bytes: bytes, filename: str) -> ProviderResult:
         return self._post_send(
             {
-                "to": to_wa_number(delivery.recipient),
-                "caption": delivery.message_text,
-                "filename": pdf_name,
+                "to": to_wa_number(to_e164),
+                "caption": caption,
+                "filename": filename,
                 "pdf_base64": base64.b64encode(pdf_bytes).decode(),
             }
         )

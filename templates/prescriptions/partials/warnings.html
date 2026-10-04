@@ -1,0 +1,7 @@
+{% load i18n %}
+{% for w in warnings %}
+<label class="mb-1 flex items-start gap-2 rounded-lg border px-3 py-2 text-sm {% if w.kind == 'allergy' %}border-red-200 bg-red-50 text-red-800{% else %}border-amber-200 bg-amber-50 text-amber-800{% endif %}">
+  <input type="checkbox" name="ack" value="{{ w.key }}" class="mt-1">
+  <span>⚠ {{ w.text }} — <b>{% translate "متأكد" %}</b></span>
+</label>
+{% endfor %}

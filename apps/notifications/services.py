@@ -276,6 +276,44 @@ def on_queue_progress(doctor, day, *, now=None):
     return rows
 
 
+def send_prescription(rx, *, by=None, now=None):
+    """05 §5.6: one immediate `prescription` row per configured channel, with the full-design PDF attached at send
+    time. Dedupe per prescription revision + channel, so finishing a visit twice never sends twice."""
+    now = now or timezone.now()
+    ns = NotificationSettings.for_org(rx.organization)
+    tpl = _first_template(rx.organization, Event.PRESCRIPTION, rx.doctor.booking_mode)
+    patient = rx.patient
+    channels = (
+        [MessageChannel.WHATSAPP, MessageChannel.EMAIL]
+        if ns.prescription_channel == DefaultChannel.BOTH
+        else [ns.prescription_channel]
+    )
+    rows = []
+    for channel in channels:
+        recipient = recipient_for(patient, channel)
+        reason = _blocking_reason(ns, tpl, patient, recipient) if tpl else _("مفيش قالب للروشتة")
+        row, _created = ScheduledMessage.objects.get_or_create(
+            dedupe_key=f"rx:{rx.pk}:{channel}",
+            defaults={
+                "organization": rx.organization,
+                "patient": patient,
+                "prescription": rx,
+                "appointment": rx.visit.appointment if rx.visit_id else None,
+                "template": tpl,
+                "event": Event.PRESCRIPTION,
+                "channel": channel,
+                "recipient": recipient,
+                "send_at": now,
+                "next_attempt_at": now,
+                "status": MessageStatus.SKIPPED if reason else MessageStatus.PENDING,
+                "status_reason": reason,
+                "created_by": by,
+            },
+        )
+        rows.append(row)
+    return rows
+
+
 def create_test_message(org, *, channel, recipient, body, subject="", by=None):
     """A one-off test row (templates screen "ابعت تجربة"); the dispatcher sends it right away."""
     now = timezone.now()

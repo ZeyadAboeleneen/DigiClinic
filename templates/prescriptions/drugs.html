@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "كتالوج الأدوية" %}{% endblock %}
+{% block content %}
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+  <h1 class="text-2xl font-bold">{% translate "كتالوج الأدوية" %}</h1>
+  <a href="{% url 'clinical:desk' %}" class="btn-ghost">{% translate "رجوع لشاشة الدكتور" %}</a>
+</div>
+
+<form method="post" class="card mb-4 grid gap-3 p-4 sm:grid-cols-4 sm:items-end" novalidate>
+  {% csrf_token %}
+  {% include "partials/field.html" with field=form.name %}
+  {% include "partials/field.html" with field=form.generic_name %}
+  {% include "partials/field.html" with field=form.form %}
+  {% include "partials/field.html" with field=form.strength %}
+  <div class="sm:col-span-2">{% include "partials/field.html" with field=form.default_instructions %}</div>
+  {% include "partials/field.html" with field=form.default_duration %}
+  {% include "partials/field.html" with field=form.aliases_text %}
+  <datalist id="drug-forms">{% for f in drug_forms %}<option value="{{ f }}">{% endfor %}</datalist>
+  <button class="btn-primary sm:col-start-4">+ {% translate "إضافة دوا" %}</button>
+</form>
+
+<form method="get" class="mb-3"><input type="search" name="q" value="{{ q }}" placeholder="{% translate 'ابحث…' %}" class="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm sm:w-80"></form>
+<div class="card overflow-x-auto">
+  <table class="w-full text-sm">
+    <tbody class="divide-y divide-stone-100">
+      {% for d in drugs %}
+      <tr class="{% if not d.is_active %}text-stone-400{% endif %}">
+        <td class="px-3 py-2 font-semibold" dir="ltr">{{ d.name }}</td>
+        <td class="px-3 py-2 text-stone-500" dir="ltr">{{ d.generic_name }}</td>
+        <td class="px-3 py-2">{{ d.form }}</td>
+        <td class="px-3 py-2 text-stone-500">{{ d.default_instructions }}{% if d.default_duration %} — {{ d.default_duration }}{% endif %}</td>
+        <td class="px-3 py-2 text-xs text-stone-400">{{ d.usage_count }}×</td>
+        <td class="px-3 py-2 text-end"><form method="post" action="{% url 'prescriptions:drug_toggle' d.pk %}">{% csrf_token %}<button class="btn-ghost text-xs">{% if d.is_active %}{% translate "إيقاف" %}{% else %}{% translate "تشغيل" %}{% endif %}</button></form></td>
+      </tr>
+      {% empty %}
+      <tr><td class="px-3 py-8 text-center text-stone-400">{% translate "مفيش أدوية." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

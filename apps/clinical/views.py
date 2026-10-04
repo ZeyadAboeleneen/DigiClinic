@@ -163,7 +163,11 @@ def visit_field(request, pk):
 @desk_unlocked
 def visit_finish(request, pk):
     visit = _visit(request, pk)
-    services.finish_visit(visit, by=request.user)
+    try:
+        services.finish_visit(visit, by=request.user)
+    except services.VisitError as e:
+        messages.error(request, str(e))
+        return redirect("clinical:visit", pk=visit.pk)
     audit.log("visit.finished", request=request, target=visit, summary=visit.patient.full_name)
     if visit.followup_after_days:
         messages.info(request, _("الاستقبال هيشوف طلب حجز الإعادة."))

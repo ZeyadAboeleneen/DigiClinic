@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "الإعدادات" %}{% endblock %}
+{% block content %}
+<h1 class="mb-6 text-2xl font-bold">{% translate "الإعدادات" %}</h1>
+{% include "partials/settings_tabs.html" %}
+
+<form method="post" class="space-y-6" novalidate>
+  {% csrf_token %}
+  <section class="card space-y-4 p-4 sm:p-6">
+    <h2 class="font-bold">{% translate "الطباعة" %}</h2>
+    <div class="grid gap-4 sm:grid-cols-2">
+      {% include "partials/field.html" with field=form.page_size %}
+      {% include "partials/field.html" with field=form.print_mode %}
+    </div>
+    <p class="text-xs text-stone-500">{% translate "نصيحة: في إعدادات الطابعة اختاري نفس المقاس (A5 أو A4) وScale 100% (من غير Fit to page)." %}</p>
+    <h3 class="pt-2 text-sm font-bold text-stone-600">{% translate "هوامش ورق العيادة المطبوع (بالمللي)" %}</h3>
+    <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      {% include "partials/field.html" with field=form.margin_top_mm %}
+      {% include "partials/field.html" with field=form.margin_bottom_mm %}
+      {% include "partials/field.html" with field=form.margin_right_mm %}
+      {% include "partials/field.html" with field=form.margin_left_mm %}
+    </div>
+    <p class="text-sm"><a href="{% url 'prescriptions:calibration' %}" target="_blank" class="font-semibold text-brand">{% translate "صفحة المعايرة (PDF) ←" %}</a>
+      <span class="text-xs text-stone-500">{% translate "اطبعيها على ورقة العيادة وقيسي المسافة من حافة الورقة لحد الهيدر ولحد الفوتر، واحفظي، واطبعيها تاني لحد ما الإطار الأحمر ييجي في المكان الفاضي بالظبط." %}</span></p>
+  </section>
+
+  <section class="card space-y-4 p-4 sm:p-6">
+    <h2 class="font-bold">{% translate "الإرسال والصلاحيات" %}</h2>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="flex items-center gap-2 text-sm font-semibold">{{ notify_form.send_prescription_after_visit }} {{ notify_form.send_prescription_after_visit.label }}</label>
+      {% include "partials/field.html" with field=notify_form.prescription_channel %}
+      <label class="flex items-center gap-2 text-sm font-semibold">{{ form.reception_can_reprint }} {{ form.reception_can_reprint.label }}</label>
+      <label class="flex items-center gap-2 text-sm font-semibold">{{ form.voice_dictation_enabled }} {{ form.voice_dictation_enabled.label }}</label>
+    </div>
+    <p class="text-xs text-stone-500">{% translate "النسخة اللي بتتبعت للمريض دايمًا بالتصميم الكامل، حتى لو الطباعة على ورق مطبوع." %}</p>
+  </section>
+
+  <div class="flex justify-end"><button class="btn-primary">{% translate "حفظ" %}</button></div>
+</form>
+{% endblock %}

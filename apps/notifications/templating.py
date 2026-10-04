@@ -113,6 +113,19 @@ def appointment_ctx(appt) -> dict:
     return ctx
 
 
+def prescription_ctx(rx) -> dict:
+    ctx = _org_ctx(rx.organization)
+    name = rx.patient_snapshot.get("name") or rx.patient.full_name
+    ctx.update(
+        patient_name=name,
+        first_name=name.split()[0] if name else "",
+        doctor_name=rx.doctor_snapshot.get("name_ar") or str(rx.doctor),
+        rx_number=rx.display_number,
+        next_visit_date=fmt_date(rx.next_visit_date) if rx.next_visit_date else "",
+    )
+    return ctx
+
+
 def sample_ctx(org) -> dict:
     """Preview data for the templates screen."""
     ctx = _org_ctx(org)

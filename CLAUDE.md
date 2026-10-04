@@ -213,3 +213,32 @@ gotchas and conventions introduced in that phase.
   settings.manage; fields are switched off, never deleted). `apps/patients/custom_fields.py` builds form fields and
   JSON values; `PatientForm(org=...)` adds scope=patient fields (quick-add in booking omits them on purpose).
 - Reception's "خلص" button from Phase 5 is still there (useful when the doctor doesn't use the desk).
+
+## Prescriptions notes (Phase 7)
+- `apps/prescriptions`: `Drug`, `DosePhrase`, `PrescriptionSettings` (one per org: page size, print mode, pre-printed
+  margins, voice on/off, `reception_can_reprint`), `PrescriptionSequence` (org+year, `RX-2026-00042`), `Prescription`
+  (+ `PrescriptionItem`, simple-history), `PrescriptionTemplate(+Item)`. "Send after visit" + channel live on
+  `NotificationSettings` (already there from Phase 4) but are edited on the Rx settings tab.
+- Lifecycle (`services.py`): draft (editable) → `finalize()` (number, patient/doctor **snapshots**, immutable; every
+  warning key must be in `acknowledged`; any `needs_review` line blocks — Phase 8 sets it for dictated lines) →
+  `revise()` = new draft `-R1` sharing the number (original untouched) → `void()` with reason. Never deleted.
+  `finish_visit()` refuses while a draft with lines exists, and (if enabled) calls `notifications.send_prescription`.
+- Safety (`safety.py`): allergy text vs trade/generic/Arabic aliases + a small drug-class table (`DRUG_CLASSES`:
+  Penicillin/بنسلين → amoxicillin, flucloxacillin…; sulfa, NSAIDs, macrolides, quinolones) + duplicate lines. It's a
+  safety net — extend `DRUG_CLASSES` rather than adding ad-hoc checks.
+- PDF: `apps/documents/pdf.render_pdf()` keeps **one warm Chromium on a dedicated thread** (Playwright's sync API is
+  thread-bound; Django serves from many threads). `warm_up()` is called when the Rx tab opens (skipped when
+  `settings.TESTING`). `full` PDF is rendered once at finalize (`ensure_pdf`, on_commit, never raises) into
+  `pdf_full`; `preprinted` is rendered on the fly for printing; patients always get `full`. Template:
+  `templates/pdf/prescription.html` — every mixed-direction run is an isolated `dir` span (05 §5.3).
+  `render_rx_samples` writes `tmp/rx-sample-{full,preprinted}.pdf` + `tmp/rx-calibration.pdf`.
+- Builder (desk → "الروشتة" tab): search (Arabic aliases too) — **Enter adds the best catalog match** (server-side,
+  so it works even before the dropdown arrives); "+ إضافة" (`free=1`) adds free text; cells autosave; dose phrases
+  insert into the last focused cell; finalize returns the builder + `printRx()` (hidden iframe → print dialog).
+- Sending: `ScheduledMessage.prescription` FK; the dispatcher attaches the stored PDF (`send_document` on WhatsApp,
+  email attachment) when the template has `attach_pdf`. Dedupe `rx:<pk>:<channel>`.
+- Permissions: `prescription.write`/`print`, `drug.manage`, `rx_template.manage` (doctor/owner). Reception can
+  reprint (numbers/dates only, no drug names) only with `reception_can_reprint`.
+- `import_drugs [csv] [--update]` (run by `run.bat`): create-only unless `--update`; seeds dose phrases once.
+- Local env gotcha found here: `.env` had `MEDIA_ROOT=C:/Users/zeyad/...` from another machine, so no upload/PDF could
+  be stored. `MEDIA_ROOT` now defaults to `%LOCALAPPDATA%\digiclinic\media`; leave it empty in `.env`.

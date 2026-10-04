@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import environ
@@ -36,6 +37,7 @@ INSTALLED_APPS = [
     "apps.clinical",
     "apps.billing",
     "apps.reception",
+    "apps.prescriptions",
 ]
 
 MIDDLEWARE = [
@@ -130,7 +132,9 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
-MEDIA_ROOT = Path(env("MEDIA_ROOT", default="") or BASE_DIR / "media")
+# Default per CLAUDE.md: %LOCALAPPDATA%\digiclinic\media (never another machine's path copied in a .env).
+_LOCAL_DATA = Path(os.environ["LOCALAPPDATA"]) / "digiclinic" if os.environ.get("LOCALAPPDATA") else BASE_DIR
+MEDIA_ROOT = Path(env("MEDIA_ROOT", default="") or _LOCAL_DATA / "media")
 PRIVATE_MEDIA_ROOT = MEDIA_ROOT / "private"
 STORAGES = {
     "default": {
@@ -163,3 +167,5 @@ LOGGING = {
     "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "plain"}},
     "root": {"handlers": ["console"], "level": env("LOG_LEVEL", default="INFO")},
 }
+
+TESTING = False  # tests flip this (skips background Chromium warm-up)

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<style>
+{{ fonts|safe }}
+@page {
+  size: {{ page_size }};
+  {% if mode == "preprinted" %}margin: {{ s.margin_top_mm }}mm {{ s.margin_right_mm }}mm {{ s.margin_bottom_mm }}mm {{ s.margin_left_mm }}mm;{% else %}margin: 9mm 10mm 8mm 10mm;{% endif %}
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { font-family: "Cairo", "Poppins", sans-serif; font-size: 10.5pt; color: #111; line-height: 1.5; }
+/* 05 §5.3: every mixed-direction run is isolated so "1g", "500 mg" and "½ قرص" never flip. */
+.ltr { direction: ltr; unicode-bidi: isolate; font-family: "Poppins", "Cairo", sans-serif; }
+.rtl { direction: rtl; unicode-bidi: isolate; }
+.sheet { display: flex; flex-direction: column; min-height: calc({% if page_size == "A5" %}210mm{% else %}297mm{% endif %} - 19mm); }
+{% if mode == "preprinted" %}.sheet { min-height: 0; }{% endif %}
+header { display: flex; align-items: center; gap: 4mm; border-bottom: 2px solid {{ org_settings.primary_color|default:"#AE171C" }}; padding-bottom: 3mm; }
+header .ar { flex: 1; text-align: right; }
+header .en { flex: 1; text-align: left; }
+header .name { font-size: 14pt; font-weight: 700; color: {{ org_settings.primary_color|default:"#AE171C" }}; }
+header .sub { font-size: 8.5pt; color: #444; }
+header img { max-height: 18mm; max-width: 24mm; object-fit: contain; }
+.meta { display: flex; justify-content: space-between; gap: 3mm; font-size: 9.5pt; margin: 3mm 0 2mm; flex-wrap: wrap; }
+.meta b { font-weight: 600; }
+.rx-mark { font-family: "Poppins", sans-serif; font-weight: 700; font-size: 16pt; color: {{ org_settings.primary_color|default:"#AE171C" }}; direction: ltr; text-align: left; margin: 1mm 0; }
+ol.items { list-style: none; margin: 0; padding: 0; }
+ol.items li { margin-bottom: 3mm; page-break-inside: avoid; }
+.drug { direction: ltr; text-align: left; font-family: "Poppins", "Cairo", sans-serif; font-weight: 600; font-size: 12pt; }
+.drug .num { color: #666; font-weight: 400; margin-right: 1.5mm; }
+.drug .form { font-weight: 400; font-size: 9.5pt; color: #555; unicode-bidi: isolate; direction: rtl; margin-left: 2mm; }
+.dose { padding-right: 0; padding-left: 6mm; text-align: right; }
+.advice { margin-top: 3mm; }
+.spacer { flex: 1; }
+.sign { display: flex; justify-content: space-between; margin-top: 6mm; font-size: 9.5pt; }
+footer .ltr { white-space: nowrap; }
+footer { margin-top: 3mm; border-top: 1px solid #ccc; padding-top: 2mm; font-size: 8pt; color: #555; display: flex; justify-content: space-between; gap: 3mm; }
+.draft-mark { position: fixed; top: 40%; left: 0; right: 0; text-align: center; font-size: 48pt; color: rgba(200, 0, 0, .12); transform: rotate(-20deg); font-weight: 700; }
+</style>
+</head>
+<body>
+{% if is_draft %}<div class="draft-mark">مسودة · معاينة</div>{% endif %}
+<div class="sheet">
+  {% if mode == "full" %}
+  <header>
+    <div class="ar">
+      <div class="name rtl">{{ doctor.name_ar }}</div>
+      {% if doctor.specialty_ar %}<div class="sub rtl">{{ doctor.specialty_ar }}</div>{% endif %}
+      {% for q in doctor.qualifications %}<div class="sub"><span dir="auto" style="unicode-bidi:isolate">{{ q }}</span></div>{% endfor %}
+    </div>
+    {% if logo %}<img src="{{ logo }}" alt="">{% endif %}
+    <div class="en">
+      {% if doctor.name_en %}<div class="name ltr">{{ doctor.name_en }}</div>{% endif %}
+      <div class="sub rtl" style="text-align:left">{{ clinic_name }}</div>
+    </div>
+  </header>
+  {% endif %}
+
+  <div class="meta">
+    <span><b>الاسم:</b> <span class="rtl">{{ patient.name }}</span></span>
+    {% if patient.age is not None %}<span><b>السن:</b> <span class="ltr">{{ patient.age }}</span></span>{% endif %}
+    <span><b>التاريخ:</b> <span class="ltr">{{ issued|date:"d/m/Y" }}</span></span>
+    <span class="ltr">#{{ patient.file_number }}</span>
+  </div>
+
+  <div class="rx-mark">R<sub>x</sub></div>
+  <ol class="items">
+    {% for it in items %}
+    <li>
+      <div class="drug"><span class="num">{{ forloop.counter }}.</span>{{ it.drug_name }}{% if it.form %}<span class="form">{{ it.form }}</span>{% endif %}</div>
+      {% if it.instructions or it.duration %}
+      <div class="dose"><span class="rtl" dir="auto">{{ it.instructions }}</span>{% if it.instructions and it.duration %} — {% endif %}<span class="rtl" dir="auto">{{ it.duration }}</span></div>
+      {% endif %}
+      {% if it.notes %}<div class="dose" style="font-size:9pt;color:#555"><span dir="auto" style="unicode-bidi:isolate">{{ it.notes }}</span></div>{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+
+  {% if rx.advice %}<div class="advice"><b>نصايح:</b> <span dir="auto" style="unicode-bidi:isolate;white-space:pre-line">{{ rx.advice }}</span></div>{% endif %}
+
+  <div class="spacer"></div>
+  <div class="sign">
+    <span>{% if rx.next_visit_date %}<b>الزيارة القادمة:</b> <span class="ltr">{{ rx.next_visit_date|date:"d/m/Y" }}</span>{% endif %}</span>
+    <span>التوقيع: ____________</span>
+  </div>
+
+  {% if mode == "full" %}
+  <footer>
+    <span class="rtl">{{ org_settings.address_ar }}{% if org_settings.phones %} · <span class="ltr">{{ org_settings.phones|join:" / " }}</span>{% endif %}{% if org_settings.working_hours_text %} · {{ org_settings.working_hours_text }}{% endif %}</span>
+    <span class="ltr">{{ rx.display_number }}</span>
+  </footer>
+  {% else %}
+  <div style="text-align:left;font-size:7.5pt;color:#777" class="ltr">{{ rx.display_number }}</div>
+  {% endif %}
+</div>
+</body>
+</html>

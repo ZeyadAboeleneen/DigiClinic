@@ -113,10 +113,18 @@ def save_field(visit, name, value, *, by=None):
 
 @transaction.atomic
 def finish_visit(visit, *, by):
-    """Visit finished → appointment completed. Prescription sending plugs in here in Phase 7."""
+    """Visit finished → appointment completed → (if the clinic enabled it) final prescriptions sent to the patient.
+    A draft prescription with lines blocks finishing: the doctor must finalize it (or clear it) first (03 §3.5)."""
+    from apps.notifications import services as notifications
+    from apps.notifications.models import NotificationSettings
+    from apps.prescriptions import services as rx_services
+    from apps.prescriptions.models import RxStatus
+
     visit = Visit.objects.select_for_update().get(pk=visit.pk)
     if visit.status == VisitStatus.FINISHED:
         return visit
+    if rx_services.open_drafts_with_items(visit).exists():
+        raise VisitError(_("فيه روشتة لسه مسودة — اعتمدها الأول (أو امسح سطورها)."))
     visit.status = VisitStatus.FINISHED
     visit.finished_at = timezone.now()
     visit._history_user = by
@@ -126,6 +134,9 @@ def finish_visit(visit, *, by):
         appt = booking.transition(appt, AppointmentStatus.IN_CONSULTATION, by=by)
     if appt.status == AppointmentStatus.IN_CONSULTATION:
         booking.transition(appt, AppointmentStatus.COMPLETED, by=by)
+    if NotificationSettings.for_org(visit.organization).send_prescription_after_visit:
+        for rx in visit.prescriptions.filter(status=RxStatus.FINAL, send_to_patient=True):
+            transaction.on_commit(lambda rx=rx: notifications.send_prescription(rx, by=by))
     return visit
 
 

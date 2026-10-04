@@ -9,6 +9,12 @@
              hx-get="{% url 'clinical:search' %}" hx-trigger="input changed delay:250ms" hx-target="#desk-search" name="q">
       <div id="desk-search"></div>
     </div>
+    {% if can.drug_manage or can.rx_template_manage %}
+    <div class="card flex flex-wrap gap-3 p-3 text-xs font-semibold">
+      {% if can.drug_manage %}<a href="{% url 'prescriptions:drugs' %}" class="text-brand">{% translate "كتالوج الأدوية" %}</a>{% endif %}
+      {% if can.rx_template_manage %}<a href="{% url 'prescriptions:templates' %}" class="text-brand">{% translate "قوالب الروشتات" %}</a>{% endif %}
+    </div>
+    {% endif %}
     <div id="desk-queue" class="card p-3" hx-get="{% url 'clinical:queue' %}" hx-trigger="every 10s" hx-swap="innerHTML">
       {% include "clinical/partials/queue.html" %}
     </div>
