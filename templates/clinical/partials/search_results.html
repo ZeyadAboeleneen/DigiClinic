@@ -1,0 +1,10 @@
+{% load i18n %}
+{% if q %}
+<ul class="mt-2 divide-y divide-stone-100 text-sm">
+  {% for p in patients %}
+  <li><a href="{% url 'clinical:record' p.pk %}" class="block px-1 py-1.5 hover:text-brand">{{ p.full_name }} <span class="font-mono text-xs text-stone-500">#{{ p.file_number }}</span></a></li>
+  {% empty %}
+  <li class="py-2 text-xs text-stone-400">{% translate "مفيش نتايج" %}</li>
+  {% endfor %}
+</ul>
+{% endif %}

@@ -185,3 +185,31 @@ gotchas and conventions introduced in that phase.
   `report.finance` (doctor/owner, used by Phase 9 reports).
 - `simulate_day [--remove]` books 10 seed_demo patients today through the real services (3 done+paid, 1 with the
   doctor, 2 waiting with vitals, 1 no-show, rest booked) and cancels every outbox row it caused — nothing is sent.
+
+## Clinical notes (Phase 6)
+- `clinical`: `Visit`, `Vitals` (from Phase 5) + `Attachment` (private storage under
+  `org_<id>/patients/<file_number>/<random>.<ext>`, type checked by **content** — `%PDF-` header or Pillow
+  JPEG/PNG — max 15 MB, served only via `clinical:attachment_file`; never deleted, `is_archived` instead).
+  `Visit.followup_handled` drives reception's "إعادات محتاجة حجز" task (`services.followups_due()`; auto-handled
+  once the patient has a booking created after the visit finished, or dismissed by reception).
+- `clinical.services`: `start_visit` (call in / reopen; always re-reads the appointment), `call_next`,
+  `save_field` (autosave whitelist: text fields, `followup_after_days`, `cf_<key>` visit custom fields;
+  `diagnosis` also fills `diagnosis_tags`, split on `، , ; newline`), `finish_visit` (→ appointment `completed`;
+  **Phase 7 plugs prescription sending/the draft check in here**), `diagnosis_suggestions`, `add_attachment`,
+  `log_clinical_view` (one audit event per user×patient×hour).
+- Doctor desk `/desk/` (`clinical.view`; edits `clinical.edit`): queue sidebar (polls every 10 s), visit page with
+  tabs (current visit / history with weight & BP sparklines / attachments / data). `/desk/` auto-opens the patient
+  currently `in_consultation` (creating the Visit if reception called them in). Any patient's file:
+  `/desk/patients/<pk>/` (search box in the sidebar, or "الملف الطبي" on the patient page).
+- Autosave: per field, 1 s debounce + on change/blur, `navigator.sendBeacon` flush on `pagehide`/hidden, **plus a
+  localStorage draft per field** re-applied on load until the server confirms — closing the tab mid-sentence loses
+  nothing (an immediate reload could otherwise race the beacon).
+- Idle lock (04 §4.1): JS posts `/desk/lock/` after 15 idle minutes; the `desk_unlocked` decorator then serves the
+  lock page (HTTP 423) for every desk view until `/desk/unlock/` gets the user's password. Session age is now 8 h.
+- Permissions: `clinical.view`/`clinical.edit` (doctor/owner), `attachment.upload` (reception/doctor/owner —
+  reception uploads from the patient page but can't list/view attachments). `test_reception_gets_403_on_every_
+  clinical_url` walks `apps/clinical/urls.py` automatically, so new clinical URLs are covered by default.
+- Custom fields (`PatientFieldDefinition`): settings tab "ملف المريض" (`/org/settings/patient-fields/`,
+  settings.manage; fields are switched off, never deleted). `apps/patients/custom_fields.py` builds form fields and
+  JSON values; `PatientForm(org=...)` adds scope=patient fields (quick-add in booking omits them on purpose).
+- Reception's "خلص" button from Phase 5 is still there (useful when the doctor doesn't use the desk).

@@ -1,0 +1,10 @@
+<div class="form-field">
+  <label for="f-{{ name }}">{{ label }}</label>
+  {% if list %}
+  <input id="f-{{ name }}" name="value" data-field="{{ name }}" class="autosave" dir="auto" list="{{ list }}" autocomplete="off"
+         value="{{ value }}" {% if not editable %}disabled{% endif %}>
+  {% else %}
+  <textarea id="f-{{ name }}" name="value" data-field="{{ name }}" class="autosave" dir="auto" rows="{{ rows }}"
+            {% if not editable %}disabled{% endif %}>{{ value }}</textarea>
+  {% endif %}
+</div>

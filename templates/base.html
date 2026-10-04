@@ -39,6 +39,12 @@
         {% translate "الاستقبال" %}
       </a>
       {% endif %}
+      {% if can.clinical_view %}
+      <a href="{% url 'clinical:desk' %}" class="nav-link {% if url_name|slice:':9' == 'clinical:' %}active{% endif %}">
+        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 3v6a4 4 0 0 0 8 0V3M10 13v3a5 5 0 0 0 10 0v-2m0 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
+        {% translate "شاشة الدكتور" %}
+      </a>
+      {% endif %}
       {% if can.appointment_book %}
       <a href="{% url 'scheduling:booking_home' %}" class="nav-link {% if url_name == 'scheduling:booking_home' or url_name == 'scheduling:booking_patient' %}active{% endif %}">
         <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>

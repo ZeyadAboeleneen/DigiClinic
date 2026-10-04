@@ -1,10 +1,12 @@
 from django.urls import path
 
-from . import views
+from . import settings_views, views
 
 app_name = "patients"
 
 urlpatterns = [
+    path("org/settings/patient-fields/", settings_views.fields_settings, name="fields_settings"),
+    path("org/settings/patient-fields/<int:pk>/toggle/", settings_views.field_toggle, name="field_toggle"),
     path("patients/", views.patient_list, name="list"),
     path("patients/duplicates/", views.duplicates_check, name="duplicates_check"),
     path("patients/add/", views.patient_add, name="add"),

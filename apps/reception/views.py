@@ -16,6 +16,7 @@ from apps.accounts.permissions import has_perm, require_perm
 from apps.audit import services as audit
 from apps.billing import services as billing
 from apps.billing.models import Payment
+from apps.clinical import services as clinical
 from apps.clinical.models import Visit, Vitals
 from apps.core.timeutils import CAIRO
 from apps.doctors.models import BookingMode, VisitType
@@ -101,7 +102,7 @@ def today(request):
     day = _today()
     ctx = _rows_ctx(request, doctor, day)
     periods = [f"{fmt_time(p.start_at)} – {fmt_time(p.end_at)}" for p in periods_for(doctor, day)]
-    ctx.update(periods=periods, day_label=fmt_date(day))
+    ctx.update(periods=periods, day_label=fmt_date(day), followups=clinical.followups_due(request.organization))
     return render(request, "reception/today.html", ctx)
 
 
@@ -271,3 +272,12 @@ def walk_in(request):
     if request.htmx:
         return render(request, "reception/partials/walk_in_results.html", ctx)
     return render(request, "reception/walk_in.html", ctx)
+
+
+@require_POST
+@require_perm("reception.operate")
+def followup_dismiss(request, visit_pk):
+    """Reception's "إعادات محتاجة حجز" task: hide one that won't be booked (patient declined, booked by phone...)."""
+    visit = get_object_or_404(Visit.objects.for_org(request.organization), pk=visit_pk)
+    Visit.objects.filter(pk=visit.pk).update(followup_handled=True)
+    return redirect("reception:today")

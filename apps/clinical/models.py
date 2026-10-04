@@ -1,9 +1,8 @@
-"""Medical record (docs/plan/02-database-schema.md §2.6). Never hard-deleted; history kept by simple-history.
+"""Medical record (docs/plan/02-database-schema.md §2.6). Never hard-deleted; history kept by simple-history."""
 
-Phase 5 only uses `Vitals` (recorded at check-in); the doctor desk (Phase 6) builds on `Visit`.
-"""
-
+import secrets
 from decimal import Decimal
+from pathlib import Path
 
 from django.conf import settings as dj_settings
 from django.db import models
@@ -33,6 +32,8 @@ class Visit(TenantScopedModel):
     plan = models.TextField(_("الخطة"), blank=True)
     notes = models.TextField(_("ملاحظات"), blank=True)
     followup_after_days = models.PositiveIntegerField(_("إعادة بعد (يوم)"), null=True, blank=True)
+    # Reception's "إعادات محتاجة حجز" task is done once a follow-up is booked or dismissed.
+    followup_handled = models.BooleanField(default=False)
     custom_fields = models.JSONField(default=dict, blank=True)
     status = models.CharField(max_length=10, choices=VisitStatus.choices, default=VisitStatus.OPEN)
 
@@ -92,3 +93,43 @@ class Vitals(TenantScopedModel):
             getattr(self, f)
             for f in ("weight_kg", "height_cm", "bp_systolic", "pulse", "temperature_c", "spo2", "blood_glucose")
         )
+
+
+class AttachmentKind(models.TextChoices):
+    LAB = "lab", _("تحليل")
+    RADIOLOGY = "radiology", _("أشعة")
+    REPORT = "report", _("تقرير")
+    OTHER = "other", _("أخرى")
+
+
+def attachment_path(instance, filename):
+    """Private storage: `org_<id>/patients/<file_number>/<random>.<ext>` — the original name is never used on disk."""
+    ext = Path(filename).suffix.lower()
+    return f"org_{instance.organization_id}/patients/{instance.patient.file_number}/{secrets.token_hex(12)}{ext}"
+
+
+class Attachment(TenantScopedModel):
+    patient = models.ForeignKey("patients.Patient", on_delete=models.PROTECT, related_name="attachments")
+    visit = models.ForeignKey(Visit, null=True, blank=True, on_delete=models.PROTECT, related_name="attachments")
+    file = models.FileField(upload_to=attachment_path)
+    content_type = models.CharField(max_length=50)
+    size = models.PositiveIntegerField(default=0)
+    kind = models.CharField(_("النوع"), max_length=10, choices=AttachmentKind.choices, default=AttachmentKind.OTHER)
+    title = models.CharField(_("العنوان"), max_length=150, blank=True)
+    taken_on = models.DateField(_("التاريخ"), null=True, blank=True)
+    uploaded_by = models.ForeignKey(dj_settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    is_archived = models.BooleanField(default=False)  # never hard-deleted
+
+    history = HistoricalRecords()
+
+    class Meta:
+        verbose_name = _("مرفق")
+        verbose_name_plural = _("المرفقات")
+        ordering = ["-taken_on", "-created_at"]
+
+    def __str__(self):
+        return self.title or self.get_kind_display()
+
+    @property
+    def is_image(self):
+        return self.content_type.startswith("image/")

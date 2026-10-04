@@ -22,7 +22,7 @@ def patient_list(request):
 
 @require_perm("patient.edit_basic")
 def patient_add(request):
-    form = PatientForm(request.POST or None)
+    form = PatientForm(request.POST or None, org=request.organization)
     duplicates = []
     if request.method == "POST" and form.is_valid():
         patient = services.create_patient(request.organization, form.save(commit=False), by=request.user)
@@ -64,7 +64,7 @@ def patient_detail(request, pk):
 @require_perm("patient.edit_basic")
 def patient_edit(request, pk):
     patient = _patient(request, pk)
-    form = PatientForm(request.POST or None, instance=patient)
+    form = PatientForm(request.POST or None, instance=patient, org=request.organization)
     if request.method == "POST" and form.is_valid():
         form.save()
         audit.log("patient.edited", request=request, target=patient, summary=patient.full_name)

@@ -112,7 +112,7 @@ AXES_USERNAME_FORM_FIELD = "username"
 AXES_USERNAME_CALLABLE = "apps.accounts.axes.get_username"
 
 # Sessions: expire after 12 hours of inactivity.
-SESSION_COOKIE_AGE = 12 * 60 * 60
+SESSION_COOKIE_AGE = 8 * 60 * 60  # 04 §4.1: 8h of inactivity
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"

@@ -1,0 +1,13 @@
+{% extends "clinical/desk_base.html" %}
+{% load i18n %}
+{% block title %}{{ patient.full_name }}{% endblock %}
+{% block desk %}
+{% include "clinical/partials/header.html" %}
+<div class="mb-4 flex flex-wrap gap-x-1 border-b border-stone-200 text-sm font-semibold" id="tabs" x-data
+     @click="if ($event.target.matches('.tab-btn')) { $el.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('border-b-2','border-brand','text-brand')); $event.target.classList.add('border-b-2','border-brand','text-brand') }">
+  <button type="button" class="tab-btn whitespace-nowrap border-b-2 border-brand px-3 py-2 text-brand" hx-get="{% url 'clinical:history' patient.pk %}" hx-target="#tab-body">{% translate "التاريخ" %}</button>
+  <button type="button" class="tab-btn whitespace-nowrap px-3 py-2 text-stone-500" hx-get="{% url 'clinical:attachments' patient.pk %}" hx-target="#tab-body">{% translate "المرفقات" %}</button>
+  <button type="button" class="tab-btn whitespace-nowrap px-3 py-2 text-stone-500" hx-get="{% url 'clinical:data' patient.pk %}" hx-target="#tab-body">{% translate "البيانات" %}</button>
+</div>
+<div id="tab-body" hx-get="{% url 'clinical:history' patient.pk %}" hx-trigger="load"></div>
+{% endblock %}

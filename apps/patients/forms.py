@@ -5,7 +5,8 @@ from django.utils.translation import gettext_lazy as _
 
 from apps.core.phones import to_e164
 
-from .models import Allergy, ChronicCondition, Patient
+from . import custom_fields
+from .models import Allergy, ChronicCondition, FieldScope, Patient
 
 
 class PatientForm(forms.ModelForm):
@@ -42,8 +43,11 @@ class PatientForm(forms.ModelForm):
             "notes": forms.Textarea(attrs={"rows": 3}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, org=None, **kwargs):
         super().__init__(*args, **kwargs)
+        # Clinic-defined extra fields (scope=patient); quick-add forms built without `org` skip them.
+        self.custom_defs = custom_fields.definitions(org, FieldScope.PATIENT)
+        custom_fields.add_to_form(self, self.custom_defs, self.instance.custom_fields)
         self.fields["whatsapp"].required = False
         if self.instance.pk and self.instance.whatsapp == self.instance.phone:
             self.fields["whatsapp_same_as_phone"].initial = True
@@ -73,9 +77,15 @@ class PatientForm(forms.ModelForm):
             instance.dob_is_estimated = True
         elif self.cleaned_data.get("date_of_birth"):
             instance.dob_is_estimated = False
+        if self.custom_defs:
+            instance.custom_fields = custom_fields.collect(self, self.custom_defs, instance.custom_fields)
         if commit:
             instance.save()
         return instance
+
+    @property
+    def custom_bound_fields(self):
+        return custom_fields.bound_fields(self, self.custom_defs)
 
 
 class AllergyForm(forms.ModelForm):

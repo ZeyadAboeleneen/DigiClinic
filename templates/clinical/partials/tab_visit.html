@@ -1,0 +1,135 @@
+{% load i18n %}
+{% url 'clinical:visit_field' visit.pk as field_url %}
+<div class="card space-y-4 p-4 sm:p-6" id="visit-form" data-url="{{ field_url }}">
+  <div class="flex items-center justify-between text-xs">
+    <span class="text-stone-500">{% if visit.status == "finished" %}{% translate "الكشف خلص — التعديلات بتتسجل في السجل" %}{% else %}{% translate "بيتحفظ تلقائي" %}{% endif %}</span>
+    <span id="save-status" class="text-stone-400"></span>
+  </div>
+  {% with editable=can.clinical_edit %}
+  {% include "clinical/partials/visit_text.html" with name="chief_complaint" label=_("الشكوى") value=visit.chief_complaint rows=2 %}
+  {% include "clinical/partials/visit_text.html" with name="history" label=_("التاريخ المرضي") value=visit.history rows=2 %}
+  {% include "clinical/partials/visit_text.html" with name="examination" label=_("الفحص") value=visit.examination rows=3 %}
+  {% include "clinical/partials/visit_text.html" with name="diagnosis" label=_("التشخيص") value=visit.diagnosis rows=2 list="diagnosis-list" %}
+  <datalist id="diagnosis-list">{% for d in diagnoses %}<option value="{{ d }}">{% endfor %}</datalist>
+  {% if diagnoses %}
+  <div class="-mt-2 flex flex-wrap gap-1">
+    {% for d in diagnoses|slice:":12" %}
+    <button type="button" class="rounded-md border border-stone-200 bg-stone-50 px-2 py-0.5 text-xs hover:bg-stone-100" {% if not editable %}disabled{% endif %}
+            data-dx="{{ d }}" onclick="addDiagnosis(this.dataset.dx)">{{ d }}</button>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% include "clinical/partials/visit_text.html" with name="plan" label=_("الخطة") value=visit.plan rows=2 %}
+  {% include "clinical/partials/visit_text.html" with name="notes" label=_("ملاحظات") value=visit.notes rows=2 %}
+
+  {% if custom %}
+  <div class="grid gap-4 sm:grid-cols-2">
+    {% for name, d, value in custom %}
+    <div class="form-field">
+      <label for="f-{{ name }}">{{ d.label_ar }}</label>
+      {% if d.type == "choice" %}
+      <select id="f-{{ name }}" name="value" data-field="{{ name }}" class="autosave" {% if not editable %}disabled{% endif %}>
+        <option value="">—</option>{% for c in d.choices %}<option {% if c == value %}selected{% endif %}>{{ c }}</option>{% endfor %}
+      </select>
+      {% elif d.type == "bool" %}
+      <input id="f-{{ name }}" type="checkbox" name="value" value="1" data-field="{{ name }}" class="autosave" {% if value %}checked{% endif %} {% if not editable %}disabled{% endif %}>
+      {% else %}
+      <input id="f-{{ name }}" name="value" data-field="{{ name }}" class="autosave" value="{{ value|default_if_none:'' }}"
+             type="{% if d.type == 'number' %}number{% elif d.type == 'date' %}date{% else %}text{% endif %}" {% if d.type == 'number' %}step="any" dir="ltr"{% endif %} {% if not editable %}disabled{% endif %}>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="form-field max-w-xs">
+    <label for="f-followup">{% translate "إعادة بعد (يوم)" %}</label>
+    <input id="f-followup" type="number" min="1" max="730" name="value" data-field="followup_after_days" class="autosave" dir="ltr"
+           value="{{ visit.followup_after_days|default_if_none:'' }}" {% if not editable %}disabled{% endif %}>
+  </div>
+  {% endwith %}
+
+  {% if can.clinical_edit and visit.status != "finished" %}
+  <div class="flex flex-wrap justify-end gap-2 border-t border-stone-100 pt-4">
+    <form method="post" action="{% url 'clinical:visit_finish' visit.pk %}" onsubmit="return flushAll()">{% csrf_token %}
+      <button class="btn-secondary">{% translate "إنهاء الكشف" %}</button>
+    </form>
+    <form method="post" action="{% url 'clinical:visit_finish' visit.pk %}" onsubmit="return flushAll()">{% csrf_token %}
+      <input type="hidden" name="next" value="1">
+      <button class="btn-primary">{% translate "إنهاء الكشف واستدعاء التالي" %}</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+  (() => {
+    const box = document.getElementById("visit-form");
+    const url = box.dataset.url;
+    const token = "{{ csrf_token }}";
+    const status = document.getElementById("save-status");
+    const dirty = new Map();  // field → element with unsaved changes
+    const timers = new Map();
+
+    // Local draft per field until the server confirms it — covers a tab closed mid-sentence and a dropped
+    // connection; re-applied (and re-saved) on the next load.
+    const draftKey = (field) => `visit:{{ visit.pk }}:${field}`;
+    const draft = {
+      set: (f, v) => { try { localStorage.setItem(draftKey(f), v); } catch (e) {} },
+      get: (f) => { try { return localStorage.getItem(draftKey(f)); } catch (e) { return null; } },
+      clear: (f) => { try { localStorage.removeItem(draftKey(f)); } catch (e) {} },
+    };
+
+    function value(el) { return el.type === "checkbox" ? (el.checked ? "1" : "") : el.value; }
+
+    function save(el, beacon = false) {
+      const field = el.dataset.field;
+      const body = new FormData();
+      body.append("csrfmiddlewaretoken", token);
+      body.append("field", field);
+      body.append("value", value(el));
+      dirty.delete(field);
+      if (beacon) return navigator.sendBeacon(url, body);
+      status.textContent = "{% translate 'بيتحفظ...' %}";
+      return fetch(url, { method: "POST", body, headers: { "HX-Request": "true" } })
+        .then((r) => r.text()).then((html) => {
+          status.innerHTML = html;
+          if (!html.includes("text-red")) draft.clear(field);
+        })
+        .catch(() => { dirty.set(field, el); status.textContent = "{% translate 'مفيش اتصال — هيتحفظ لما يرجع' %}"; });
+    }
+
+    box.querySelectorAll(".autosave").forEach((el) => {
+      const saved = draft.get(el.dataset.field);
+      if (saved !== null && saved !== value(el) && el.type !== "checkbox" && !el.disabled) {
+        el.value = saved;
+        save(el);
+      } else if (saved !== null) {
+        draft.clear(el.dataset.field);
+      }
+      const handler = () => {
+        draft.set(el.dataset.field, value(el));
+        dirty.set(el.dataset.field, el);
+        clearTimeout(timers.get(el));
+        timers.set(el, setTimeout(() => save(el), 1000));
+      };
+      el.addEventListener("input", handler);
+      el.addEventListener("change", () => save(el));
+      el.addEventListener("blur", () => dirty.has(el.dataset.field) && save(el));
+    });
+
+    // Closing the tab mid-sentence: flush whatever is still pending with sendBeacon (survives the unload).
+    window.addEventListener("pagehide", () => dirty.forEach((el) => save(el, true)));
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") dirty.forEach((el) => save(el, true));
+    });
+
+    window.flushAll = () => { dirty.forEach((el) => save(el, true)); return true; };
+    window.addDiagnosis = (text) => {
+      const ta = document.getElementById("f-diagnosis");
+      ta.value = ta.value.trim() ? ta.value.trim() + "، " + text : text;
+      draft.set("diagnosis", ta.value);
+      save(ta);
+    };
+  })();
+</script>

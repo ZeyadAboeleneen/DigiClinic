@@ -1,0 +1,35 @@
+{% extends "clinical/desk_base.html" %}
+{% load i18n %}
+{% block title %}{{ patient.full_name }}{% endblock %}
+{% block desk %}
+{% include "clinical/partials/header.html" %}
+{% url 'clinical:history' patient.pk as history_url %}{% url 'clinical:attachments' patient.pk as attachments_url %}{% url 'clinical:data' patient.pk as data_url %}
+{% translate "التاريخ" as l_history %}{% translate "المرفقات" as l_att %}{% translate "البيانات" as l_data %}
+<div class="mb-4 flex flex-wrap gap-x-1 border-b border-stone-200 text-sm font-semibold" id="tabs">
+  <button type="button" class="tab-btn whitespace-nowrap border-b-2 border-brand px-3 py-2 text-brand" onclick="showVisitTab(this)">{% translate "الزيارة الحالية" %}</button>
+  <button type="button" class="tab-btn whitespace-nowrap px-3 py-2 text-stone-500" hx-get="{{ history_url }}" hx-target="#tab-body" onclick="showOtherTab(this)">{{ l_history }}</button>
+  <button type="button" class="tab-btn whitespace-nowrap px-3 py-2 text-stone-500" hx-get="{{ attachments_url }}?visit={{ visit.pk }}" hx-target="#tab-body" onclick="showOtherTab(this)">{{ l_att }}</button>
+  <button type="button" class="tab-btn whitespace-nowrap px-3 py-2 text-stone-500" hx-get="{{ data_url }}" hx-target="#tab-body" onclick="showOtherTab(this)">{{ l_data }}</button>
+</div>
+
+<div id="visit-tab">{% include "clinical/partials/tab_visit.html" %}</div>
+<div id="tab-body" class="hidden"></div>
+
+<script>
+  function markTab(btn) {
+    document.querySelectorAll("#tabs .tab-btn").forEach((b) => b.classList.remove("border-b-2", "border-brand", "text-brand"));
+    btn.classList.add("border-b-2", "border-brand", "text-brand");
+  }
+  // The visit form stays in the DOM (hidden) while other tabs show, so nothing typed is ever discarded.
+  function showVisitTab(btn) {
+    markTab(btn);
+    document.getElementById("visit-tab").classList.remove("hidden");
+    document.getElementById("tab-body").classList.add("hidden");
+  }
+  function showOtherTab(btn) {
+    markTab(btn);
+    document.getElementById("visit-tab").classList.add("hidden");
+    document.getElementById("tab-body").classList.remove("hidden");
+  }
+</script>
+{% endblock %}

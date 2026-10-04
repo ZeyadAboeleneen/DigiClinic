@@ -1,0 +1,42 @@
+{% load i18n %}
+<div id="attachments-tab" class="space-y-4">
+  {% if can.attachment_upload %}
+  <form class="card grid gap-3 p-4 sm:grid-cols-4 sm:items-end" hx-post="{% url 'clinical:attachment_upload' patient.pk %}"
+        hx-target="#attachments-tab" hx-swap="outerHTML" hx-encoding="multipart/form-data"
+        x-data="{ over: false }" @dragover.prevent="over = true" @dragleave="over = false"
+        @drop.prevent="over = false; $refs.file.files = $event.dataTransfer.files" :class="over && 'ring-2 ring-brand'">
+    <input type="hidden" name="visit" value="{{ visit_id }}">
+    <div class="form-field sm:col-span-2{% if form.file.errors %} has-error{% endif %}">
+      <label for="att-file">{% translate "الملف (اسحبه هنا أو صوّره من الموبايل)" %}</label>
+      <input id="att-file" x-ref="file" type="file" name="file" accept="application/pdf,image/jpeg,image/png" capture="environment" required>
+      {{ form.file.errors }}
+    </div>
+    {% include "partials/field.html" with field=form.kind %}
+    {% include "partials/field.html" with field=form.taken_on %}
+    <div class="sm:col-span-3">{% include "partials/field.html" with field=form.title %}</div>
+    <button class="btn-primary">{% translate "رفع" %}</button>
+  </form>
+  {% endif %}
+
+  <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" x-data="{ open: null }">
+    {% for a in attachments %}
+    <div class="card overflow-hidden text-sm">
+      {% url 'clinical:attachment_file' a.pk as file_url %}
+      {% if a.is_image %}
+      <button type="button" class="block w-full" @click="open = '{{ file_url }}'"><img src="{{ file_url }}" alt="{{ a }}" loading="lazy" class="h-40 w-full object-cover"></button>
+      {% else %}
+      <a href="{{ file_url }}" target="_blank" class="flex h-40 items-center justify-center bg-stone-50 text-3xl">📄</a>
+      {% endif %}
+      <div class="p-3">
+        <div class="font-semibold">{{ a }}</div>
+        <div class="text-xs text-stone-500">{{ a.get_kind_display }} · <span dir="ltr">{{ a.taken_on|date:"Y-m-d" }}</span></div>
+      </div>
+    </div>
+    {% empty %}
+    <p class="text-sm text-stone-400">{% translate "مفيش مرفقات." %}</p>
+    {% endfor %}
+    <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" @click="open = null" @keydown.escape.window="open = null">
+      <img :src="open" alt="" class="max-h-full max-w-full rounded-lg">
+    </div>
+  </div>
+</div>

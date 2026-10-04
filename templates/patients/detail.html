@@ -8,6 +8,7 @@
     <p class="font-mono text-sm text-stone-500" dir="ltr">#{{ patient.file_number }}</p>
   </div>
   <div class="flex gap-2">
+    {% if can.clinical_view %}<a href="{% url 'clinical:record' patient.pk %}" class="btn-primary">{% translate "الملف الطبي" %}</a>{% endif %}
     {% if can.patient_edit_basic %}<a href="{% url 'patients:edit' patient.pk %}" class="btn-secondary">{% translate "تعديل" %}</a>{% endif %}
     {% if can.patient_merge %}
     <div class="relative" x-data="{ open: false }">
@@ -56,4 +57,17 @@
     {% endif %}
   </section>
 </div>
+{% if can.attachment_upload and not can.clinical_view %}
+<section class="card mt-6 p-4 sm:p-6">
+  <h2 class="mb-3 font-bold">{% translate "رفع تحليل/أشعة" %}</h2>
+  <form method="post" enctype="multipart/form-data" action="{% url 'clinical:attachment_upload' patient.pk %}" class="grid gap-3 sm:grid-cols-4 sm:items-end">
+    {% csrf_token %}
+    <div class="form-field sm:col-span-2"><label for="up-file">{% translate "الملف" %}</label>
+      <input id="up-file" type="file" name="file" accept="application/pdf,image/jpeg,image/png" capture="environment" required></div>
+    <div class="form-field"><label for="up-kind">{% translate "النوع" %}</label>
+      <select id="up-kind" name="kind"><option value="lab">{% translate "تحليل" %}</option><option value="radiology">{% translate "أشعة" %}</option><option value="report">{% translate "تقرير" %}</option><option value="other">{% translate "أخرى" %}</option></select></div>
+    <button class="btn-primary">{% translate "رفع" %}</button>
+  </form>
+</section>
+{% endif %}
 {% endblock %}

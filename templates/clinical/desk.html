@@ -1,0 +1,13 @@
+{% extends "clinical/desk_base.html" %}
+{% load i18n %}
+{% block title %}{% translate "شاشة الدكتور" %}{% endblock %}
+{% block desk %}
+<div class="card flex flex-col items-center gap-4 p-10 text-center">
+  <p class="text-stone-500">{% translate "مفيش مريض عندك دلوقتي." %}</p>
+  {% if q_waiting and can.clinical_edit %}
+  <form method="post" action="{% url 'clinical:call' q_waiting.0.pk %}">{% csrf_token %}
+    <button class="btn-primary">{% blocktranslate with p=q_waiting.0.patient.full_name %}استدعاء {{ p }}{% endblocktranslate %}</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

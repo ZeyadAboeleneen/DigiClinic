@@ -1,0 +1,14 @@
+{% load i18n %}
+<div class="card p-4 sm:p-6">
+  <dl class="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+    <div><dt class="text-xs text-stone-500">{% translate "الموبايل" %}</dt><dd dir="ltr" class="text-end">{{ patient.phone }}</dd></div>
+    <div><dt class="text-xs text-stone-500">{% translate "تاريخ الميلاد" %}</dt><dd>{{ patient.date_of_birth|date:"Y-m-d"|default:"—" }}</dd></div>
+    <div><dt class="text-xs text-stone-500">{% translate "المهنة" %}</dt><dd>{{ patient.occupation|default:"—" }}</dd></div>
+    <div><dt class="text-xs text-stone-500">{% translate "العنوان" %}</dt><dd>{{ patient.address|default:"—" }}</dd></div>
+    {% if patient.guardian_name %}<div><dt class="text-xs text-stone-500">{% translate "ولي الأمر" %}</dt><dd>{{ patient.guardian_name }}</dd></div>{% endif %}
+    {% for label, value in extra %}
+    <div><dt class="text-xs text-stone-500">{{ label }}</dt><dd>{% if value is True %}✓{% elif value is False or value is None %}—{% else %}{{ value }}{% endif %}</dd></div>
+    {% endfor %}
+  </dl>
+  {% if can.patient_edit_basic %}<a href="{% url 'patients:edit' patient.pk %}" class="mt-4 inline-block text-xs font-semibold text-brand">{% translate "تعديل البيانات" %}</a>{% endif %}
+</div>

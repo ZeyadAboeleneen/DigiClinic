@@ -15,6 +15,7 @@ VIEWER = {
     "appointment.view",
 }
 RECEPTION = VIEWER | {
+    "attachment.upload",
     "reception.operate",
     "vitals.record",
     "payment.record",
@@ -27,6 +28,9 @@ RECEPTION = VIEWER | {
     "messages.retry",
 }
 DOCTOR = VIEWER | {
+    "clinical.view",
+    "clinical.edit",
+    "attachment.upload",
     "reception.operate",
     "vitals.record",
     "payment.record",

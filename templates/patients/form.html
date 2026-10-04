@@ -41,6 +41,11 @@
     {% include "partials/field.html" with field=form.preferred_channel %}
     <label class="mt-6 flex items-center gap-2 text-sm">{{ form.messaging_consent }} {% translate "موافق على استقبال رسايل التذكير" %}</label>
   </div>
+  {% if form.custom_bound_fields %}
+  <div class="grid gap-4 sm:grid-cols-2">
+    {% for f in form.custom_bound_fields %}{% include "partials/field.html" with field=f %}{% endfor %}
+  </div>
+  {% endif %}
   {% include "partials/field.html" with field=form.notes %}
 
   <div class="flex justify-end gap-2">

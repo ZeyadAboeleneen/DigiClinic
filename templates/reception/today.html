@@ -16,6 +16,22 @@
   </div>
 </div>
 
+{% if followups %}
+<section class="card mb-4 border-amber-200 p-4">
+  <h2 class="mb-2 text-sm font-bold">{% translate "إعادات محتاجة حجز" %}</h2>
+  <ul class="divide-y divide-stone-100 text-sm">
+    {% for v, suggested in followups %}
+    <li class="flex flex-wrap items-center gap-3 py-2">
+      <span class="font-semibold">{{ v.patient.full_name }}</span>
+      <span class="text-stone-500">{% translate "إعادة حوالي" %} <span dir="ltr">{{ suggested|date:"Y-m-d" }}</span></span>
+      {% if can.appointment_book %}<a href="{% url 'scheduling:booking_patient' v.patient.pk %}?day={{ suggested|date:'Y-m-d' }}" class="ms-auto btn-secondary px-3 py-1 text-xs">{% translate "احجز" %}</a>{% endif %}
+      <form method="post" action="{% url 'reception:followup_dismiss' v.pk %}">{% csrf_token %}<button class="btn-ghost text-xs">{% translate "تجاهل" %}</button></form>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
 <div id="reception"
      hx-get="{% url 'reception:rows' %}" hx-trigger="every 5s [!document.querySelector('#modal > *')]" hx-swap="innerHTML"
      hx-vals='js:{sig: (document.getElementById("rows-sig") || {}).value || ""}'>

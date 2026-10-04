@@ -1,0 +1,1 @@
+{% load i18n %}{% if error %}<span class="font-semibold text-red-700">{{ error }}</span>{% else %}<span class="text-green-700">✓ {% translate "اتحفظ" %} <span dir="ltr">{{ saved_at|time:"H:i:s" }}</span></span>{% endif %}
