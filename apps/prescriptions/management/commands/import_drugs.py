@@ -2,6 +2,10 @@
 
 Upsert by name. Existing drugs are left alone (edits made in the UI win) unless --update. Also seeds the default
 dose phrases ("كل 8 ساعات"، "بعد الأكل"...) the first time.
+
+Optional `categories` column: category names separated by "|" (e.g. "Antibiotics|Penicillins"), matching the
+names in apps/prescriptions/specialties.py (new names are created). Existing drugs get them only if they have none
+yet, or with --update (which replaces them).
 """
 
 import csv
@@ -12,6 +16,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from apps.organizations.models import Organization
+from apps.prescriptions.categories import category as get_category
 from apps.prescriptions.models import DosePhrase, Drug, PhraseKind
 
 DEFAULT_CSV = Path(settings.BASE_DIR) / "docs" / "plan" / "seed" / "drugs.csv"
@@ -65,14 +70,21 @@ class Command(BaseCommand):
                     "default_instructions": (row.get("default_instructions") or "").strip(),
                     "default_duration": (row.get("default_duration") or "").strip(),
                 }
+                cats = [get_category(org, c) for c in (row.get("categories") or "").split("|") if c.strip()]
                 drug = Drug.objects.filter(organization=org, name=name).first()
                 if drug is None:
-                    Drug.objects.create(organization=org, name=name, **values)
+                    drug = Drug.objects.create(organization=org, name=name, **values)
+                    drug.categories.set(cats)
                     created += 1
                 elif o["update"]:
                     for k, v in values.items():
                         setattr(drug, k, v)
                     drug.save()
+                    if cats:
+                        drug.categories.set(cats)
+                    updated += 1
+                elif cats and not drug.categories.exists():
+                    drug.categories.set(cats)
                     updated += 1
             phrases = seed_phrases(org)
             self.stdout.write(f"{org.slug}: {created} drug(s) added, {updated} updated, {phrases} phrase(s) added")

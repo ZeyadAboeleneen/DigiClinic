@@ -27,4 +27,43 @@
       cell.focus();
     });
   })();
+  // Drug-category buttons in the prescription builder: one tap filters the search; the choice sticks (per doctor)
+  // for the next drug, across re-renders, until another category or "الكل" is tapped.
+  (() => {
+    const key = (box) => `rx-cat:${box.dataset.doctor}`;
+    const mark = (box, id) => box.querySelectorAll(".rx-cat").forEach((b) => {
+      const on = b.dataset.cat === id;
+      b.classList.toggle("bg-brand", on);
+      b.classList.toggle("text-white", on);
+      b.classList.toggle("border-brand", on);
+    });
+    const restore = () => {
+      const box = document.getElementById("rx-cats");
+      const input = document.getElementById("rx-category");
+      if (!box || !input) return;
+      let saved = "";
+      try { saved = localStorage.getItem(key(box)) || ""; } catch (e) { /* private mode */ }
+      if (saved && !box.querySelector(`.rx-cat[data-cat="${saved}"]`)) saved = "";  // category was removed
+      input.value = saved;
+      mark(box, saved);
+    };
+    document.addEventListener("click", (e) => {
+      const chip = e.target.closest?.("#rx-cats .rx-cat");
+      if (!chip) return;
+      const box = document.getElementById("rx-cats");
+      const id = chip.dataset.cat;
+      try { localStorage.setItem(key(box), id); } catch (err) { /* ignore */ }
+      document.getElementById("rx-category").value = id;
+      mark(box, id);
+      const search = document.getElementById("rx-search");
+      if (id || search.value.trim()) {
+        htmx.ajax("GET", box.dataset.searchUrl, { target: "#drug-results", swap: "innerHTML", values: { drug_name: search.value, category: id } });
+      } else {
+        document.getElementById("drug-results").innerHTML = "";
+      }
+      search.focus();
+    });
+    document.addEventListener("htmx:afterSettle", restore);
+    document.addEventListener("DOMContentLoaded", restore);
+  })();
 </script>

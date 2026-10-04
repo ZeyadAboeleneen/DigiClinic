@@ -17,6 +17,8 @@ class Doctor(TenantScopedModel):
     name_en = models.CharField(_("الاسم بالإنجليزي"), max_length=150, blank=True)
     title_ar = models.CharField(_("اللقب"), max_length=30, blank=True, help_text=_("د. / أ.د."))
     specialty_ar = models.CharField(_("التخصص"), max_length=150, blank=True)
+    # Key of apps.prescriptions.specialties.SPECIALTIES — picks the starting drug-category list (set once in Settings).
+    drug_specialty = models.CharField(_("تخصص تصنيفات الأدوية"), max_length=40, blank=True)
     qualifications = models.JSONField(_("المؤهلات"), default=list, blank=True)
     booking_mode = models.CharField(
         _("طريقة الحجز"), max_length=10, choices=BookingMode.choices, default=BookingMode.SLOTS

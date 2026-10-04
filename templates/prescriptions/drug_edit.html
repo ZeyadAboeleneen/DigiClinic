@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ drug.name }}{% endblock %}
+{% block content %}
+<div class="mb-4 flex items-center justify-between">
+  <h1 class="text-2xl font-bold" dir="ltr">{{ drug.name }}</h1>
+  <a href="{% url 'prescriptions:drugs' %}" class="btn-ghost">{% translate "رجوع للكتالوج" %}</a>
+</div>
+<form method="post" class="card grid gap-3 p-4 sm:grid-cols-4 sm:items-end sm:p-6" novalidate>
+  {% csrf_token %}
+  {% include "partials/field.html" with field=form.name %}
+  {% include "partials/field.html" with field=form.generic_name %}
+  {% include "partials/field.html" with field=form.form %}
+  {% include "partials/field.html" with field=form.strength %}
+  <div class="sm:col-span-2">{% include "partials/field.html" with field=form.default_instructions %}</div>
+  {% include "partials/field.html" with field=form.default_duration %}
+  {% include "partials/field.html" with field=form.aliases_text %}
+  <fieldset class="sm:col-span-4"><legend class="mb-1 text-sm font-semibold text-stone-700">{{ form.categories.label }}</legend>
+    <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs" dir="ltr">{% for cb in form.categories %}<label class="flex items-center gap-1">{{ cb.tag }} {{ cb.choice_label }}</label>{% empty %}<span class="text-stone-400">{% translate "اختار تخصصك من تصنيفات الأدوية الأول" %}</span>{% endfor %}</div>
+  </fieldset>
+  <datalist id="drug-forms">{% for f in drug_forms %}<option value="{{ f }}">{% endfor %}</datalist>
+  <button class="btn-primary sm:col-start-4">{% translate "حفظ" %}</button>
+</form>
+{% endblock %}

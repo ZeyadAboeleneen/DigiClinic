@@ -21,6 +21,8 @@ urlpatterns = [
     path("org/settings/prescription/calibration.pdf", views.calibration_pdf, name="calibration"),
     path("prescriptions/drugs/", views.drug_catalog, name="drugs"),
     path("prescriptions/drugs/<int:pk>/toggle/", views.drug_toggle, name="drug_toggle"),
+    path("prescriptions/drugs/<int:pk>/", views.drug_edit, name="drug_edit"),
+    path("prescriptions/categories/", views.categories_settings, name="categories"),
     path("prescriptions/templates/", views.template_list, name="templates"),
     path("prescriptions/templates/<int:pk>/delete/", views.template_delete, name="template_delete"),
 ]

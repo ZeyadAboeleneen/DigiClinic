@@ -1,33 +1,33 @@
-name,generic_name,form,strength,aliases_ar,default_instructions,default_duration
-Augmentin 1g,Amoxicillin + Clavulanic acid,قرص,1 g,اوجمنتين|اوجمنتن,قرص كل 12 ساعة بعد الأكل,لمدة 7 أيام
-Augmentin 457 susp,Amoxicillin + Clavulanic acid,شراب,457 mg/5 ml,اوجمنتين شراب,حسب الوزن كل 12 ساعة,لمدة 7 أيام
-Hibiotic 1g,Amoxicillin + Clavulanic acid,قرص,1 g,هاي بيوتك|هايبيوتك,قرص كل 12 ساعة بعد الأكل,لمدة 7 أيام
-Flumox 500,Amoxicillin + Flucloxacillin,كبسولة,500 mg,فلوموكس,كبسولة كل 8 ساعات,لمدة 7 أيام
-Zithromax 500,Azithromycin,قرص,500 mg,زيثروماكس,قرص مرة يوميًا,لمدة 3 أيام
-Ciprofloxacin 500,Ciprofloxacin,قرص,500 mg,سيبروفلوكساسين|سيبرو,قرص كل 12 ساعة,لمدة 5 أيام
-Flagyl 500,Metronidazole,قرص,500 mg,فلاجيل,قرص كل 8 ساعات بعد الأكل,لمدة 5 أيام
-Antinal,Nifuroxazide,كبسولة,200 mg,انتينال,كبسولة كل 6 ساعات,لمدة 3 أيام
-Panadol 500,Paracetamol,قرص,500 mg,بنادول,قرص عند اللزوم,
-Panadol Extra,Paracetamol + Caffeine,قرص,500/65 mg,بنادول اكسترا,قرص عند اللزوم بحد أقصى 4 يوميًا,
-Brufen 400,Ibuprofen,قرص,400 mg,بروفين,قرص كل 8 ساعات بعد الأكل,لمدة 5 أيام
-Cataflam 50,Diclofenac potassium,قرص,50 mg,كتافلام|كاتافلام,قرص كل 12 ساعة بعد الأكل,لمدة 5 أيام
-Voltaren 75 amp,Diclofenac sodium,حقن,75 mg,فولتارين حقن,أمبول عضل عند اللزوم,
-Nexium 40,Esomeprazole,قرص,40 mg,نكسيوم,قرص قبل الفطار بنص ساعة,لمدة 14 يوم
-Controloc 40,Pantoprazole,قرص,40 mg,كنترولوك,قرص قبل الفطار بنص ساعة,لمدة 14 يوم
-Motilium 10,Domperidone,قرص,10 mg,موتيليوم,قرص قبل الأكل بربع ساعة 3 مرات يوميًا,لمدة 5 أيام
-Buscopan 10,Hyoscine butylbromide,قرص,10 mg,بوسكوبان,قرص عند اللزوم 3 مرات يوميًا,
-Gaviscon,Alginate,شراب,,جافيسكون,معلقتين بعد الأكل وقبل النوم,
-Claritine 10,Loratadine,قرص,10 mg,كلاريتين,قرص مرة يوميًا,لمدة 7 أيام
-Zyrtec 10,Cetirizine,قرص,10 mg,زيرتك,قرص قبل النوم,لمدة 7 أيام
-Telfast 180,Fexofenadine,قرص,180 mg,تلفاست,قرص مرة يوميًا,لمدة 7 أيام
-Otrivin 0.1%,Xylometazoline,نقط أنف,0.1%,اوتريفين,نقطتين في كل فتحة كل 12 ساعة,بحد أقصى 5 أيام
-Ventolin inhaler,Salbutamol,بخاخ,100 mcg,فنتولين,بختين عند اللزوم,
-Glucophage 500,Metformin,قرص,500 mg,جلوكوفاج,قرص مع الأكل مرتين يوميًا,مستمر
-Amaryl 2,Glimepiride,قرص,2 mg,اماريل,قرص قبل الفطار,مستمر
-Concor 5,Bisoprolol,قرص,5 mg,كونكور,قرص مرة يوميًا الصبح,مستمر
-Norvasc 5,Amlodipine,قرص,5 mg,نورفاسك,قرص مرة يوميًا,مستمر
-Lipitor 20,Atorvastatin,قرص,20 mg,ليبيتور,قرص بالليل,مستمر
-Aspocid 75,Acetylsalicylic acid,قرص,75 mg,اسبوسيد,قرص بعد الغدا,مستمر
-Vitamin D3 50000,Cholecalciferol,كبسولة,50000 IU,فيتامين د,كبسولة مرة أسبوعيًا,لمدة 8 أسابيع
-Ferrofol,Iron + Folic acid,كبسولة,,فيروفول,كبسولة مرة يوميًا بعد الأكل,لمدة شهر
-Fucidin cream,Fusidic acid,كريم,2%,فيوسيدين,دهان مرتين يوميًا,لمدة 7 أيام
+name,generic_name,form,strength,aliases_ar,default_instructions,default_duration,categories
+Augmentin 1g,Amoxicillin + Clavulanic acid,قرص,1 g,اوجمنتين|اوجمنتن,قرص كل 12 ساعة بعد الأكل,لمدة 7 أيام,Antibiotics|Penicillins|Oral Antibiotics|Systemic Antibiotics
+Augmentin 457 susp,Amoxicillin + Clavulanic acid,شراب,457 mg/5 ml,اوجمنتين شراب,حسب الوزن كل 12 ساعة,لمدة 7 أيام,Antibiotics|Penicillins|Pediatric Antibiotics
+Hibiotic 1g,Amoxicillin + Clavulanic acid,قرص,1 g,هاي بيوتك|هايبيوتك,قرص كل 12 ساعة بعد الأكل,لمدة 7 أيام,Antibiotics|Penicillins|Oral Antibiotics|Systemic Antibiotics
+Flumox 500,Amoxicillin + Flucloxacillin,كبسولة,500 mg,فلوموكس,كبسولة كل 8 ساعات,لمدة 7 أيام,Antibiotics|Penicillins|Oral Antibiotics
+Zithromax 500,Azithromycin,قرص,500 mg,زيثروماكس,قرص مرة يوميًا,لمدة 3 أيام,Antibiotics|Macrolides|Oral Antibiotics|Systemic Antibiotics
+Ciprofloxacin 500,Ciprofloxacin,قرص,500 mg,سيبروفلوكساسين|سيبرو,قرص كل 12 ساعة,لمدة 5 أيام,Antibiotics|Fluoroquinolones|UTI medications
+Flagyl 500,Metronidazole,قرص,500 mg,فلاجيل,قرص كل 8 ساعات بعد الأكل,لمدة 5 أيام,Antibiotics|Antiprotozoals|GI medications
+Antinal,Nifuroxazide,كبسولة,200 mg,انتينال,كبسولة كل 6 ساعات,لمدة 3 أيام,GI medications|Antidiarrheals|Pediatric GI medications
+Panadol 500,Paracetamol,قرص,500 mg,بنادول,قرص عند اللزوم,,Analgesics / Antipyretics|Analgesics|Paracetamol|Pain medications
+Panadol Extra,Paracetamol + Caffeine,قرص,500/65 mg,بنادول اكسترا,قرص عند اللزوم بحد أقصى 4 يوميًا,,Analgesics / Antipyretics|Analgesics|Paracetamol
+Brufen 400,Ibuprofen,قرص,400 mg,بروفين,قرص كل 8 ساعات بعد الأكل,لمدة 5 أيام,NSAIDs|Analgesics|Anti-inflammatory medications
+Cataflam 50,Diclofenac potassium,قرص,50 mg,كتافلام|كاتافلام,قرص كل 12 ساعة بعد الأكل,لمدة 5 أيام,NSAIDs|Analgesics|Anti-inflammatory medications
+Voltaren 75 amp,Diclofenac sodium,حقن,75 mg,فولتارين حقن,أمبول عضل عند اللزوم,,NSAIDs|Analgesics
+Nexium 40,Esomeprazole,قرص,40 mg,نكسيوم,قرص قبل الفطار بنص ساعة,لمدة 14 يوم,GI medications|PPIs|GI Protection|Gastroprotective agents
+Controloc 40,Pantoprazole,قرص,40 mg,كنترولوك,قرص قبل الفطار بنص ساعة,لمدة 14 يوم,GI medications|PPIs|GI Protection|Gastroprotective agents
+Motilium 10,Domperidone,قرص,10 mg,موتيليوم,قرص قبل الأكل بربع ساعة 3 مرات يوميًا,لمدة 5 أيام,GI medications|Prokinetics|Antiemetics
+Buscopan 10,Hyoscine butylbromide,قرص,10 mg,بوسكوبان,قرص عند اللزوم 3 مرات يوميًا,,GI medications|Antispasmodics|IBS medications
+Gaviscon,Alginate,شراب,,جافيسكون,معلقتين بعد الأكل وقبل النوم,,GI medications|Antacids
+Claritine 10,Loratadine,قرص,10 mg,كلاريتين,قرص مرة يوميًا,لمدة 7 أيام,Antihistamines|Allergy medications
+Zyrtec 10,Cetirizine,قرص,10 mg,زيرتك,قرص قبل النوم,لمدة 7 أيام,Antihistamines|Allergy medications
+Telfast 180,Fexofenadine,قرص,180 mg,تلفاست,قرص مرة يوميًا,لمدة 7 أيام,Antihistamines|Allergy medications
+Otrivin 0.1%,Xylometazoline,نقط أنف,0.1%,اوتريفين,نقطتين في كل فتحة كل 12 ساعة,بحد أقصى 5 أيام,Nasal Decongestants|Respiratory medications
+Ventolin inhaler,Salbutamol,بخاخ,100 mcg,فنتولين,بختين عند اللزوم,,Respiratory medications|Bronchodilators|Pediatric Respiratory medications
+Glucophage 500,Metformin,قرص,500 mg,جلوكوفاج,قرص مع الأكل مرتين يوميًا,مستمر,Diabetes medications|Biguanides|Antidiabetics
+Amaryl 2,Glimepiride,قرص,2 mg,اماريل,قرص قبل الفطار,مستمر,Diabetes medications|Sulfonylureas|Antidiabetics
+Concor 5,Bisoprolol,قرص,5 mg,كونكور,قرص مرة يوميًا الصبح,مستمر,Antihypertensives|Beta Blockers|Heart Failure medications
+Norvasc 5,Amlodipine,قرص,5 mg,نورفاسك,قرص مرة يوميًا,مستمر,Antihypertensives|Calcium Channel Blockers
+Lipitor 20,Atorvastatin,قرص,20 mg,ليبيتور,قرص بالليل,مستمر,Lipid-lowering drugs|Statins / Lipid-lowering|Statins
+Aspocid 75,Acetylsalicylic acid,قرص,75 mg,اسبوسيد,قرص بعد الغدا,مستمر,Antiplatelets|Low-dose Antiplatelet therapy
+Vitamin D3 50000,Cholecalciferol,كبسولة,50000 IU,فيتامين د,كبسولة مرة أسبوعيًا,لمدة 8 أسابيع,Vitamins & Minerals|Vitamin D|Vitamin Supplements
+Ferrofol,Iron + Folic acid,كبسولة,,فيروفول,كبسولة مرة يوميًا بعد الأكل,لمدة شهر,Vitamins & Minerals|Iron|Iron preparations|Folic Acid|Prenatal Vitamins
+Fucidin cream,Fusidic acid,كريم,2%,فيوسيدين,دهان مرتين يوميًا,لمدة 7 أيام,Topical Antibiotics|Dermatology medications|Wound-care medications

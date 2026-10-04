@@ -1,16 +1,20 @@
 {% load i18n %}
-{% if q %}
-<div class="mt-1 rounded-lg border border-stone-200 bg-white py-1 shadow-lg" role="listbox">
+{% if q or category %}
+<div class="mt-1 max-h-80 overflow-y-auto rounded-lg border border-stone-200 bg-white py-1 shadow-lg" role="listbox">
+  {% if category %}<p class="px-3 pb-1 text-xs text-stone-400" dir="ltr">{{ category.name }}{% if q %} · “{{ q }}…”{% endif %}</p>{% endif %}
   {% for d in drugs %}
   <button type="button" class="flex w-full items-baseline gap-2 px-3 py-1.5 text-start text-sm hover:bg-stone-50 focus:bg-stone-100 focus:outline-none"
           hx-post="{% url 'prescriptions:item_add' rx.pk %}" hx-vals='{"drug": "{{ d.pk }}"}' hx-target="#rx-builder" hx-swap="outerHTML"
-          onkeydown="if (event.key === 'ArrowDown') { this.nextElementSibling?.focus(); event.preventDefault(); } if (event.key === 'ArrowUp') { (this.previousElementSibling || document.getElementById('rx-search')).focus(); event.preventDefault(); }">
+          onkeydown="if (event.key === 'ArrowDown') { this.nextElementSibling?.focus(); event.preventDefault(); } if (event.key === 'ArrowUp') { (this.previousElementSibling?.matches('button') ? this.previousElementSibling : document.getElementById('rx-search')).focus(); event.preventDefault(); }">
     <span class="font-semibold" dir="ltr">{{ d.name }}</span>
     <span class="text-xs text-stone-500" dir="ltr">{{ d.generic_name }}</span>
     <span class="ms-auto text-xs text-stone-400">{{ d.form }}</span>
   </button>
   {% empty %}
-  <p class="px-3 py-1.5 text-xs text-stone-500">{% translate "مش في الكتالوج — اضغط \"إضافة\" تكتبه حر." %}</p>
+  <p class="px-3 py-1.5 text-xs text-stone-500">
+    {% if category %}{% translate "مفيش أدوية في التصنيف ده بتبدأ بكده — اضغط \"إضافة\" تكتبه حر (وبعدين ＋📚 يضيفه للتصنيف)." %}
+    {% else %}{% translate "مش في الكتالوج — اضغط \"إضافة\" تكتبه حر." %}{% endif %}
+  </p>
   {% endfor %}
 </div>
 {% endif %}

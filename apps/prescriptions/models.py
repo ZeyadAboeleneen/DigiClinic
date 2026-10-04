@@ -12,6 +12,46 @@ from apps.core.models import OrgQuerySet, TenantScopedModel
 DRUG_FORMS = ["قرص", "كبسولة", "شراب", "حقن", "نقط", "نقط أنف", "كريم", "بخاخ", "لبوس", "فوار", "أكياس"]
 
 
+class DrugCategory(TenantScopedModel):
+    """A category name drugs are tagged with ("Antibiotics", "NSAIDs"...). Shared across the clinic's doctors;
+    each doctor chooses which ones to show, and in what order, through `DoctorCategory`."""
+
+    name = models.CharField(_("التصنيف"), max_length=100)
+
+    class Meta:
+        verbose_name = _("تصنيف أدوية")
+        verbose_name_plural = _("تصنيفات الأدوية")
+        ordering = ["name"]
+        constraints = [models.UniqueConstraint(fields=["organization", "name"], name="uniq_drug_category_name")]
+
+    def __str__(self):
+        return self.name
+
+
+class CategoryLevel(models.TextChoices):
+    PRIMARY = "primary", "Primary"
+    COMMON = "common", "Common"
+    OCCASIONAL = "occasional", "Occasional"
+    NOT_TYPICAL = "not_typical", "Not typical"
+
+
+class DoctorCategory(TenantScopedModel):
+    """One doctor's category buttons in the prescription builder, in order (seeded from the specialty preset)."""
+
+    doctor = models.ForeignKey("doctors.Doctor", on_delete=models.CASCADE, related_name="drug_categories")
+    category = models.ForeignKey(DrugCategory, on_delete=models.CASCADE, related_name="doctor_entries")
+    order = models.PositiveSmallIntegerField(default=0)
+    level = models.CharField(max_length=12, choices=CategoryLevel.choices, default=CategoryLevel.PRIMARY)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["order", "id"]
+        constraints = [models.UniqueConstraint(fields=["doctor", "category"], name="uniq_doctor_category")]
+
+    def __str__(self):
+        return f"{self.doctor} — {self.category}"
+
+
 class Drug(TenantScopedModel):
     name = models.CharField(_("الاسم التجاري"), max_length=150)
     generic_name = models.CharField(_("الاسم العلمي"), max_length=200, blank=True)
@@ -20,6 +60,7 @@ class Drug(TenantScopedModel):
     aliases_ar = models.JSONField(_("أسماء بالعربي"), default=list, blank=True)
     default_instructions = models.CharField(_("الجرعة الافتراضية"), max_length=200, blank=True)
     default_duration = models.CharField(_("المدة الافتراضية"), max_length=100, blank=True)
+    categories = models.ManyToManyField(DrugCategory, blank=True, related_name="drugs", verbose_name=_("التصنيفات"))
     usage_count = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
 

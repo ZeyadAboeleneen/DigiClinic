@@ -5,6 +5,7 @@ from datetime import date
 from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
+from django.db.models import Count
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
@@ -14,15 +15,20 @@ from apps.accounts.permissions import has_perm, require_membership, require_perm
 from apps.audit import services as audit
 from apps.clinical.models import Visit
 from apps.clinical.views import desk_unlocked
+from apps.doctors.services import get_doctor
 from apps.documents import pdf as engine
 from apps.notifications.models import NotificationSettings
 
+from . import categories as cats
 from . import matching, pdf, safety, services
 from .forms import DrugForm, PrescriptionSettingsForm, RxNotifyForm
 from .models import (
     DRUG_FORMS,
+    CategoryLevel,
+    DoctorCategory,
     DosePhrase,
     Drug,
+    DrugCategory,
     Prescription,
     PrescriptionItem,
     PrescriptionSettings,
@@ -78,6 +84,7 @@ def _builder_ctx(request, rx, **extra):
         .exists(),
         "send_enabled": ns.send_prescription_after_visit,
         "rx_settings": PrescriptionSettings.for_org(org),
+        "categories": cats.for_doctor(rx.doctor),
         "drug_forms": DRUG_FORMS,
         "revisions": Prescription.objects.filter(visit=rx.visit).exclude(pk=rx.pk).order_by("-created_at")
         if rx.visit_id
@@ -112,8 +119,17 @@ def builder(request, visit_pk):
 def drug_search(request, pk):
     rx = _rx(request, pk)
     q = (request.GET.get("q") or request.GET.get("drug_name") or "").strip()
-    drugs = services.search_drugs(request.organization, q) if q else []
-    return render(request, "prescriptions/partials/drug_results.html", {"rx": rx, "drugs": drugs, "q": q})
+    category = _category(request)
+    drugs = services.search_drugs(request.organization, q, limit=12, category=category) if q or category else []
+    ctx = {"rx": rx, "drugs": drugs, "q": q, "category": category}
+    return render(request, "prescriptions/partials/drug_results.html", ctx)
+
+
+def _category(request):
+    raw = request.GET.get("category") or request.POST.get("category") or ""
+    if not raw.isdigit():
+        return None
+    return DrugCategory.objects.filter(organization=request.organization, pk=int(raw)).first()
 
 
 @require_POST
@@ -127,7 +143,8 @@ def item_add(request, pk):
     elif request.POST.get("free") != "1":
         # Enter in the search box (possibly before the suggestions arrived): take the best catalog match, the same
         # one the dropdown would list first. "+ إضافة" (free=1) always adds the typed text as-is.
-        matches = services.search_drugs(request.organization, request.POST.get("drug_name", ""), limit=1)
+        q = request.POST.get("drug_name", "")
+        matches = services.search_drugs(request.organization, q, limit=1, category=_category(request)) if q else []
         drug = matches[0] if matches else None
     try:
         services.add_item(rx, drug=drug, drug_name=request.POST.get("drug_name", ""))
@@ -239,6 +256,9 @@ def item_to_catalog(request, item_pk):
         name=item.drug_name,
         defaults={"form": item.form, "default_instructions": item.instructions, "default_duration": item.duration},
     )
+    category = _category(request)
+    if category is not None:
+        drug.categories.add(category)
     if item.prescription.is_editable:
         PrescriptionItem.objects.filter(pk=item.pk).update(drug=drug)
     return _builder(request, item.prescription, notice=_("%(d)s اتضاف للكتالوج") % {"d": drug.name})
@@ -364,7 +384,8 @@ def settings_prescription(request):
 @require_perm("drug.manage")
 def drug_catalog(request):
     org = request.organization
-    form = DrugForm(request.POST or None)
+    doctor = get_doctor(org)
+    form = DrugForm(request.POST or None, org=org, doctor=doctor)
     if request.method == "POST" and form.is_valid():
         drug = form.save(commit=False)
         drug.organization = org
@@ -372,11 +393,17 @@ def drug_catalog(request):
             form.add_error("name", _("الدوا ده موجود."))
         else:
             drug.save()
+            form.save_m2m()
             messages.success(request, _("%(d)s اتضاف.") % {"d": drug.name})
             return redirect("prescriptions:drugs")
     q = request.GET.get("q", "").strip()
-    drugs = services.search_drugs(org, q, limit=200) if q else Drug.objects.filter(organization=org)[:200]
-    ctx = {"form": form, "drugs": drugs, "q": q, "drug_forms": DRUG_FORMS}
+    category = _category(request)
+    if q or category:
+        drugs = services.search_drugs(org, q, limit=300, category=category)
+    else:
+        drugs = list(Drug.objects.filter(organization=org).prefetch_related("categories")[:300])
+    ctx = {"form": form, "drugs": drugs, "q": q, "drug_forms": DRUG_FORMS, "category": category,
+           "doctor_categories": cats.for_doctor(doctor)}  # fmt: skip
     return render(request, "prescriptions/drugs.html", ctx)
 
 
@@ -402,3 +429,70 @@ def template_delete(request, pk):
     tpl.delete()
     messages.success(request, _("القالب اتمسح."))
     return redirect("prescriptions:templates")
+
+
+@require_perm("drug.manage")
+def drug_edit(request, pk):
+    drug = get_object_or_404(Drug.objects.filter(organization=request.organization), pk=pk)
+    form = DrugForm(request.POST or None, instance=drug, org=request.organization,
+                    doctor=get_doctor(request.organization))  # fmt: skip
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, _("%(d)s اتحفظ.") % {"d": drug.name})
+        return redirect("prescriptions:drugs")
+    return render(request, "prescriptions/drug_edit.html", {"form": form, "drug": drug, "drug_forms": DRUG_FORMS})
+
+
+# --- drug categories per doctor (Settings → تصنيفات الأدوية) ---------------------------------
+
+
+@require_perm("drug.manage")
+def categories_settings(request):
+    from .specialties import SPECIALTIES, SPECIALTY_CHOICES
+
+    doctor = get_doctor(request.organization)
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "specialty":
+            key = request.POST.get("specialty", "")
+            try:
+                cats.apply_specialty(doctor, key)
+            except ValueError:
+                messages.error(request, _("اختار تخصص."))
+            else:
+                audit.log("settings.drug_categories", request=request, summary=key)
+                messages.success(request, _("التصنيفات اتظبطت على التخصص."))
+        elif action == "add":
+            name = request.POST.get("name", "").strip()
+            level = request.POST.get("level") or CategoryLevel.PRIMARY
+            if name:
+                cats.add(doctor, name, level if level in CategoryLevel.values else CategoryLevel.PRIMARY)
+                messages.success(request, _("%(n)s اتضاف.") % {"n": name})
+        elif action in ("up", "down", "remove"):
+            entry = get_object_or_404(DoctorCategory.objects.filter(doctor=doctor), pk=request.POST.get("entry"))
+            if action == "remove":
+                entry.delete()  # the category name and its drug tags stay; it can be added back any time
+            else:
+                cats.move(entry, action)
+        return redirect("prescriptions:categories")
+    entries = cats.for_doctor(doctor, include_hidden=True)
+    counts = dict(
+        DrugCategory.objects.filter(organization=request.organization).annotate(n=Count("drugs")).values_list("pk", "n")
+    )
+    for e in entries:
+        e.drug_count = counts.get(e.category_id, 0)
+    ctx = {
+        "doctor": doctor,
+        "entries": entries,
+        "specialties": SPECIALTY_CHOICES,
+        "levels": CategoryLevel.choices,
+        # Suggestions for "add": every name the presets or this clinic use, so the doctor reuses existing names
+        # (drug tags match by category, not by spelling variants).
+        "known_categories": sorted(
+            {n for _name, items in SPECIALTIES.values() for n, _lvl in items}
+            | set(DrugCategory.objects.filter(organization=request.organization).values_list("name", flat=True)),
+            key=str.lower,
+        ),
+        "tab": "drug_categories",
+    }
+    return render(request, "prescriptions/categories.html", ctx)

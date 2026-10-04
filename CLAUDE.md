@@ -297,3 +297,19 @@ gotchas and conventions introduced in that phase.
   `SECURE_REDIRECT_EXEMPT` for the internal webhook + healthz, `EMAIL_URL`, `SITE_URL`, gateway `WA_GATEWAY_HOST`,
   gunicorn dependency. Upload images are shrunk to 2000 px / JPEG 85 (07 §7.2) in `clinical.services.shrink_image`.
 - Docker isn't available on the dev machine: the images have not been built here. First build happens on the server.
+
+## Drug categories (added after Phase 10 prep)
+- `apps/prescriptions/specialties.py`: the clinic's 29 specialties + 24 sub-specialty presets (category order + level,
+  as given 2026-10-05). `DrugCategory` = a category name shared in the org (drugs are tagged with it, M2M
+  `Drug.categories`); `DoctorCategory` = one doctor's buttons (order/level). `Doctor.drug_specialty` = the preset key.
+  Logic in `apps/prescriptions/categories.py` (`apply_specialty` replaces the doctor's list; `add` reuses an existing
+  name case-insensitively; `move`). Settings → "تصنيفات الأدوية" (`prescriptions:categories`, drug.manage).
+- Builder: chip row above the search (`#rx-cats`); the chosen category is kept per doctor in localStorage and sent as
+  `category` with search / add / ＋📚 (`#rx-category`). With a category, `search_drugs` = that category's drugs whose
+  trade name, generic name or an Arabic alias **starts with** the text (empty text lists the category); without, the
+  old "contains" search with prefix matches first. All levels are shown, in order (level only colours a dot in
+  Settings). Category names stay English.
+- `import_drugs` reads an optional `categories` column ("A|B"); the 32 seed drugs are tagged. The clinic will send a
+  full drug file later — names must match the preset names (new names are created).
+- HTMX gotcha fixed here: elements inside a form with `hx-swap="outerHTML"` inherit it — give inner hx-targets an
+  explicit `hx-swap="innerHTML"` (the drug search box lost its results container after the first keystroke).

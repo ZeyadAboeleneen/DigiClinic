@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from django.core.files.base import ContentFile
 from django.db import transaction
-from django.db.models import F, Max, Q
+from django.db.models import Case, F, IntegerField, Max, Q, Value, When
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
@@ -64,13 +64,23 @@ def _require_draft(rx):
         raise PrescriptionError(_("الروشتة دي معتمدة — اعمل نسخة معدلة."))
 
 
-def search_drugs(org, q, limit=8):
+def search_drugs(org, q, limit=8, *, category=None):
+    """Catalog search. With a category: only that category's drugs whose trade name, generic name or an Arabic
+    alias *starts with* `q` (an empty `q` lists the category). Without: anywhere in the name, prefix matches first."""
     q = (q or "").strip()
     qs = Drug.objects.filter(organization=org, is_active=True)
-    if q:
-        norm = normalize_arabic(q)
-        qs = qs.filter(Q(name__icontains=q) | Q(generic_name__icontains=q) | Q(aliases_ar__icontains=norm))
-    return list(qs.order_by("-usage_count", "name")[:limit])
+    norm = normalize_arabic(q)
+    starts = Q(name__istartswith=q) | Q(generic_name__istartswith=q) | Q(aliases_ar__icontains=f'"{norm}')
+    if category is not None:
+        qs = qs.filter(categories=category)
+        if q:
+            qs = qs.filter(starts)
+        return list(qs.distinct().order_by("-usage_count", "name")[:limit])
+    if not q:
+        return []
+    qs = qs.filter(Q(name__icontains=q) | Q(generic_name__icontains=q) | Q(aliases_ar__icontains=norm))
+    qs = qs.annotate(prefix=Case(When(starts, then=Value(0)), default=Value(1), output_field=IntegerField()))
+    return list(qs.order_by("prefix", "-usage_count", "name")[:limit])
 
 
 def _next_order(rx):

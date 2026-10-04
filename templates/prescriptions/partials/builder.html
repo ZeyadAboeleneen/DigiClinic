@@ -13,12 +13,28 @@
   {% if rx.is_editable %}
   {# --- add a drug --- #}
   <div class="card space-y-3 p-4">
+    {% if categories %}
+    {# Category buttons (the doctor's specialty list, in order). The choice sticks for the next drug (rx_js.html). #}
+    <div id="rx-cats" class="flex flex-wrap items-center gap-1" data-doctor="{{ rx.doctor_id }}"
+         data-search-url="{% url 'prescriptions:drug_search' rx.pk %}">
+      <button type="button" class="rx-cat rounded-full border border-stone-300 px-3 py-1 text-xs font-semibold" data-cat="">{% translate "الكل" %}</button>
+      {% for dc in categories %}
+      <button type="button" class="rx-cat rounded-full border border-stone-300 px-3 py-1 text-xs" data-cat="{{ dc.category_id }}" dir="ltr">{{ dc.category.name }}</button>
+      {% endfor %}
+      {% if can.drug_manage %}<a href="{% url 'prescriptions:categories' %}" class="px-1 text-xs text-stone-400 hover:text-brand" title="{% translate 'تعديل التصنيفات' %}">⚙</a>{% endif %}
+    </div>
+    {% elif can.drug_manage %}
+    <p class="text-xs text-stone-500">{% translate "اختار تخصصك مرة واحدة عشان تظهر تصنيفات الأدوية هنا:" %} <a href="{% url 'prescriptions:categories' %}" class="font-semibold text-brand">{% translate "تصنيفات الأدوية" %}</a></p>
+    {% endif %}
     <form class="flex gap-2" hx-post="{% url 'prescriptions:item_add' rx.pk %}" hx-target="#rx-builder" hx-swap="outerHTML">
+      <input type="hidden" id="rx-category" name="category" value="">
       <div class="relative flex-1">
         <input id="rx-search" name="drug_name" autocomplete="off" dir="auto"
                data-dictate="rx" data-dictate-url="{% url 'prescriptions:dictate' rx.pk %}" data-dictate-target="#rx-dictation" placeholder="{% translate 'ابحث أو اكتب اسم الدوا…' %}"
                class="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
-               hx-get="{% url 'prescriptions:drug_search' rx.pk %}" hx-trigger="input changed delay:200ms" hx-target="#drug-results"
+               hx-get="{% url 'prescriptions:drug_search' rx.pk %}" hx-trigger="input changed delay:150ms" hx-target="#drug-results"
+               hx-swap="innerHTML" {# explicit: the enclosing form's outerHTML swap must not be inherited #}
+               hx-include="#rx-category"
                onkeydown="const first = document.querySelector('#drug-results button');
                           if (event.key === 'ArrowDown' && first) { first.focus(); event.preventDefault(); }
                           if (event.key === 'Enter' && first) { first.click(); event.preventDefault(); }">
@@ -26,7 +42,7 @@
       </div>
       {# type=button: Enter in the search box must not "submit" through this button (that would force free text). #}
       <button type="button" class="btn-secondary whitespace-nowrap" title="{% translate 'إضافة النص زي ما هو (دوا مش في الكتالوج)' %}"
-              hx-post="{% url 'prescriptions:item_add' rx.pk %}" hx-include="#rx-search" hx-vals='{"free": "1"}'
+              hx-post="{% url 'prescriptions:item_add' rx.pk %}" hx-include="#rx-search, #rx-category" hx-vals='{"free": "1"}'
               hx-target="#rx-builder" hx-swap="outerHTML">+ {% translate "إضافة" %}</button>
     </form>
     <div class="flex flex-wrap items-center gap-2 text-sm">
@@ -62,7 +78,7 @@
       <div class="flex items-center gap-1 text-xs">
         <span id="cell-{{ it.pk }}" class="w-4"></span>
         {% if it.needs_review %}<button class="btn-ghost px-1 text-amber-700" hx-post="{% url 'prescriptions:item_action' it.pk 'confirm' %}" hx-target="#rx-builder" hx-swap="outerHTML">✓ {% translate "تأكيد" %}</button>{% endif %}
-        {% if not it.drug_id and can.drug_manage %}<button class="btn-ghost px-1" title="{% translate 'ضيفه للكتالوج' %}" hx-post="{% url 'prescriptions:item_to_catalog' it.pk %}" hx-target="#rx-builder" hx-swap="outerHTML">＋📚</button>{% endif %}
+        {% if not it.drug_id and can.drug_manage %}<button class="btn-ghost px-1" title="{% translate 'ضيفه للكتالوج' %}" hx-post="{% url 'prescriptions:item_to_catalog' it.pk %}" hx-include="#rx-category" hx-target="#rx-builder" hx-swap="outerHTML">＋📚</button>{% endif %}
         <button class="btn-ghost px-1" hx-post="{% url 'prescriptions:item_action' it.pk 'up' %}" hx-target="#rx-builder" hx-swap="outerHTML" aria-label="{% translate 'لفوق' %}">↑</button>
         <button class="btn-ghost px-1" hx-post="{% url 'prescriptions:item_action' it.pk 'down' %}" hx-target="#rx-builder" hx-swap="outerHTML" aria-label="{% translate 'لتحت' %}">↓</button>
         <button class="btn-ghost px-1 text-red-600" hx-post="{% url 'prescriptions:item_action' it.pk 'remove' %}" hx-target="#rx-builder" hx-swap="outerHTML" aria-label="{% translate 'مسح' %}">✕</button>
