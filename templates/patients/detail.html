@@ -76,4 +76,45 @@
   <div hx-get="{% url 'prescriptions:patient_list' patient.pk %}" hx-trigger="load"></div>
 </section>
 {% endif %}
+<div class="mt-6 grid gap-6 lg:grid-cols-2">
+  <section class="card p-4 sm:p-6">
+    <h2 class="mb-3 font-bold">{% translate "الحجوزات" %}</h2>
+    <ul class="divide-y divide-stone-100 text-sm">
+      {% for a in appointments %}
+      <li class="flex flex-wrap gap-2 py-1.5"><span class="font-mono" dir="ltr">{{ a.start_at|date:"Y-m-d H:i" }}</span>{% if a.queue_number %}<span class="text-stone-500">#{{ a.queue_number }}</span>{% endif %}
+        <span class="text-stone-500">{{ a.visit_type.name_ar }}</span><span class="ms-auto badge bg-stone-100 text-stone-600">{{ a.get_status_display }}</span></li>
+      {% empty %}<li class="py-2 text-stone-400">{% translate "مفيش حجوزات." %}</li>{% endfor %}
+    </ul>
+  </section>
+  {% if payments is not None %}
+  <section class="card p-4 sm:p-6">
+    <h2 class="mb-3 font-bold">{% translate "المدفوعات" %}</h2>
+    <ul class="divide-y divide-stone-100 text-sm">
+      {% for p in payments %}
+      <li class="flex gap-2 py-1.5"><span class="font-mono" dir="ltr">{{ p.received_at|date:"Y-m-d" }}</span><span>{{ p.get_method_display }}</span>
+        <span class="ms-auto font-mono" dir="ltr">{{ p.signed_amount|floatformat:"-2" }}</span></li>
+      {% empty %}<li class="py-2 text-stone-400">{% translate "مفيش مدفوعات." %}</li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+  {% if sent_messages is not None %}
+  <section class="card p-4 sm:p-6 lg:col-span-2">
+    <h2 class="mb-3 font-bold">{% translate "الرسايل" %}</h2>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <ul class="divide-y divide-stone-100 text-sm">
+        {% for m in sent_messages %}
+        <li class="flex flex-wrap gap-2 py-1.5"><span class="font-mono text-xs" dir="ltr">{{ m.send_at|date:"Y-m-d H:i" }}</span><span>{{ m.get_event_display }}</span>
+          <span class="ms-auto badge {% if m.status == 'sent' %}bg-green-50 text-green-700{% elif m.status == 'failed' %}bg-red-50 text-red-700{% else %}bg-stone-100 text-stone-500{% endif %}">{{ m.get_status_display }}</span></li>
+        {% empty %}<li class="py-2 text-stone-400">{% translate "مفيش رسايل اتبعتت." %}</li>{% endfor %}
+      </ul>
+      <ul class="divide-y divide-stone-100 text-sm">
+        <li class="pb-1 text-xs font-bold text-stone-500">{% translate "رسايل من المريض (واتساب)" %}</li>
+        {% for m in inbound_messages %}
+        <li class="py-1.5"><span class="font-mono text-xs" dir="ltr">{{ m.received_at|date:"Y-m-d H:i" }}</span> <span dir="auto">{{ m.body }}</span></li>
+        {% empty %}<li class="py-2 text-stone-400">{% translate "مفيش." %}</li>{% endfor %}
+      </ul>
+    </div>
+  </section>
+  {% endif %}
+</div>
 {% endblock %}

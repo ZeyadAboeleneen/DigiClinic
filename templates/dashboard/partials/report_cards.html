@@ -1,0 +1,23 @@
+{% load i18n %}
+<div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+  <div class="card p-4"><div class="text-xs text-stone-500">{% translate "زيارات" %}</div><div class="text-2xl font-bold">{{ r.visits }}</div></div>
+  <div class="card p-4"><div class="text-xs text-stone-500">{% translate "مرضى جداد" %}</div><div class="text-2xl font-bold">{{ r.new_patients }}</div></div>
+  <div class="card p-4"><div class="text-xs text-stone-500">{% translate "نسبة الغياب" %}</div><div class="text-2xl font-bold" dir="ltr">{% if r.no_show_rate is not None %}{% widthratio r.no_show_rate 1 100 %}%{% else %}—{% endif %}</div><div class="text-xs text-stone-400">{{ r.no_shows }} {% translate "غياب" %}</div></div>
+  <div class="card p-4"><div class="text-xs text-stone-500">{% translate "الإيراد" %}</div><div class="text-2xl font-bold" dir="ltr">{{ r.revenue_total|floatformat:"-2" }}</div>
+    <div class="text-xs text-stone-400">{% for label, amount in r.revenue_by_method %}{{ label }} <span dir="ltr">{{ amount|floatformat:"-2" }}</span>{% if not forloop.last %} · {% endif %}{% endfor %}</div></div>
+</div>
+<div class="mt-3 grid gap-3 lg:grid-cols-2">
+  <div class="card p-4">
+    <div class="mb-2 text-xs font-bold text-stone-500">{% translate "أكتر التشخيصات" %}</div>
+    {% for dx, n in r.top_diagnoses %}
+    <div class="flex items-center gap-2 text-sm"><span class="flex-1 truncate" dir="auto">{{ dx }}</span><span class="text-stone-500">{{ n }}</span></div>
+    {% empty %}<p class="text-sm text-stone-400">—</p>{% endfor %}
+  </div>
+  <div class="card p-4">
+    <div class="mb-2 text-xs font-bold text-stone-500">{% translate "التذكيرات" %}</div>
+    <p class="text-sm">{% blocktranslate with n=r.reminders_sent %}اتبعت {{ n }} تذكير{% endblocktranslate %}</p>
+    {% if r.reminders_sent %}
+    <p class="text-sm">{% translate "وصل" %}: <b dir="ltr">{% widthratio r.reminders_delivered_rate 1 100 %}%</b> · {% translate "اتقرا" %}: <b dir="ltr">{% widthratio r.reminders_read_rate 1 100 %}%</b></p>
+    {% endif %}
+  </div>
+</div>

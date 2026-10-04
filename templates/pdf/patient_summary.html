@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<style>
+{{ fonts|safe }}
+@page { size: A4; margin: 14mm 12mm; }
+body { font-family: "Cairo", "Poppins", sans-serif; font-size: 10pt; color: #111; line-height: 1.5; }
+h1 { font-size: 15pt; margin: 0; } h2 { font-size: 11.5pt; border-bottom: 1px solid #ccc; padding-bottom: 1mm; margin: 6mm 0 2mm; }
+.muted { color: #555; } .ltr { direction: ltr; unicode-bidi: isolate; font-family: "Poppins", "Cairo", sans-serif; }
+.iso { unicode-bidi: isolate; } table { width: 100%; border-collapse: collapse; } td, th { text-align: right; padding: 1mm 1.5mm; vertical-align: top; border-bottom: 1px solid #eee; }
+.visit { page-break-inside: avoid; margin-bottom: 3mm; }
+</style>
+</head>
+<body>
+<h1>{{ patient.full_name }}</h1>
+<p class="muted">ملف رقم <span class="ltr">#{{ patient.file_number }}</span> · {{ patient.get_gender_display }}{% if age is not None %} · {{ age }} سنة{% endif %} · <span class="ltr">{{ patient.phone }}</span><br>
+{{ clinic.name_ar }} — اتعمل <span class="ltr">{{ generated_at|date:"Y-m-d H:i" }}</span></p>
+
+<h2>الحساسية والأمراض المزمنة</h2>
+<p>{% for a in allergies %}<span class="iso" dir="auto">{{ a.name }}</span> ({{ a.get_severity_display }}){% if not forloop.last %} · {% endif %}{% empty %}مفيش حساسية مسجلة.{% endfor %}<br>
+{% for c in conditions %}<span class="iso" dir="auto">{{ c.name }}</span>{% if not forloop.last %} · {% endif %}{% empty %}مفيش أمراض مزمنة مسجلة.{% endfor %}</p>
+
+<h2>الزيارات</h2>
+{% for v in visits %}
+<div class="visit">
+  <b class="ltr">{{ v.created_at|date:"Y-m-d" }}</b>
+  {% if v.chief_complaint %}<div>الشكوى: <span class="iso" dir="auto">{{ v.chief_complaint }}</span></div>{% endif %}
+  {% if v.examination %}<div>الفحص: <span class="iso" dir="auto">{{ v.examination }}</span></div>{% endif %}
+  {% if v.diagnosis %}<div>التشخيص: <span class="iso" dir="auto">{{ v.diagnosis }}</span></div>{% endif %}
+  {% if v.plan %}<div>الخطة: <span class="iso" dir="auto">{{ v.plan }}</span></div>{% endif %}
+  {% if v.vitals %}<div class="muted">العلامات: {% if v.vitals.weight_kg %}<span class="ltr">{{ v.vitals.weight_kg }} kg</span> {% endif %}{% if v.vitals.bp_systolic %}<span class="ltr">{{ v.vitals.bp_systolic }}/{{ v.vitals.bp_diastolic }}</span> {% endif %}{% if v.vitals.pulse %}نبض <span class="ltr">{{ v.vitals.pulse }}</span>{% endif %}</div>{% endif %}
+</div>
+{% empty %}<p>مفيش زيارات.</p>{% endfor %}
+
+<h2>الروشتات</h2>
+<table>
+{% for rx in prescriptions %}
+<tr><td class="ltr" style="white-space:nowrap">{{ rx.display_number }}<br>{{ rx.issued_at|date:"Y-m-d" }}</td>
+<td>{% for it in rx.items.all %}<div><span class="ltr">{{ it.drug_name }}</span> — <span class="iso" dir="auto">{{ it.instructions }}{% if it.duration %} {{ it.duration }}{% endif %}</span></div>{% endfor %}</td></tr>
+{% empty %}<tr><td>مفيش روشتات.</td></tr>{% endfor %}
+</table>
+
+<h2>المرفقات</h2>
+<p>{% for a in attachments %}{{ a.get_kind_display }}: <span class="iso" dir="auto">{{ a }}</span> (<span class="ltr">{{ a.taken_on|date:"Y-m-d" }}</span>){% if not forloop.last %} · {% endif %}{% empty %}مفيش.{% endfor %}<br>
+<span class="muted">الملفات نفسها بتتسلم منفصلة لو المريض طلبها.</span></p>
+</body>
+</html>

@@ -23,3 +23,4 @@ MEDIA_ROOT = BASE_DIR / "tmp" / "test-media"
 PRIVATE_MEDIA_ROOT = MEDIA_ROOT / "private"
 STORAGES["default"]["OPTIONS"]["location"] = PRIVATE_MEDIA_ROOT
 TESTING = True
+AUTO_BACKUP = False

@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     "apps.prescriptions",
 ]
 
+X_FRAME_OPTIONS = "SAMEORIGIN"  # the prescription print iframe (05 §5.4); other sites still can't frame us
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -49,6 +51,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.core.middleware.ContentSecurityPolicyMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
     "apps.core.middleware.CurrentOrganizationMiddleware",
     "simple_history.middleware.HistoryRequestMiddleware",
@@ -145,6 +148,12 @@ STORAGES = {
 }
 
 FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY")
+# Backups (07 §7.5): encrypted with BACKUP_KEY (defaults to FIELD_ENCRYPTION_KEY — keep a copy of it somewhere safe,
+# without it no backup can be read). BACKUP_DIR defaults to <MEDIA_ROOT>/../backups (%LOCALAPPDATA%/digiclinic).
+BACKUP_KEY = env("BACKUP_KEY", default="")
+BACKUP_DIR = env("BACKUP_DIR", default="")
+PG_BIN = env("PG_BIN", default="")
+AUTO_BACKUP = env.bool("AUTO_BACKUP", default=True)  # daily backup from run_scheduler
 
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="DigiClinic <no-reply@localhost>")

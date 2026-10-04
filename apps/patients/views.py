@@ -4,6 +4,7 @@ from django.utils.translation import gettext as _
 
 from apps.accounts.permissions import has_perm, require_perm
 from apps.audit import services as audit
+from apps.core.ratelimit import search_limit
 from apps.prescriptions import views as rx_views
 
 from . import services
@@ -12,6 +13,7 @@ from .models import Allergy, ChronicCondition, Patient
 
 
 @require_perm("patient.view_basic")
+@search_limit
 def patient_list(request):
     q = request.GET.get("q", "")
     patients = Patient.objects.for_org(request.organization).filter(is_active=True).search(q)[:50]
@@ -60,6 +62,15 @@ def patient_detail(request, pk):
     }
     if can_view_medical:
         ctx["chronic_conditions"] = patient.chronic_conditions.all()
+    # 03 §3.7: bookings (upcoming + past), messages (sent + received, 06 §6.7) and payments.
+    ctx["appointments"] = patient.appointments.select_related("visit_type").order_by("-start_at")[:20]
+    if has_perm(request.membership, "messages.view"):
+        ctx["sent_messages"] = patient.scheduled_messages.order_by("-send_at")[:10]
+        ctx["inbound_messages"] = patient.inbound_messages.all()[:10]
+    if has_perm(request.membership, "payment.record"):
+        from apps.billing.models import Payment
+
+        ctx["payments"] = Payment.objects.filter(appointment__patient=patient).select_related("appointment")[:20]
     return render(request, "patients/detail.html", ctx)
 
 
@@ -68,7 +79,10 @@ def patient_edit(request, pk):
     patient = _patient(request, pk)
     form = PatientForm(request.POST or None, instance=patient, org=request.organization)
     if request.method == "POST" and form.is_valid():
-        form.save()
+        patient = form.save(commit=False)
+        if patient.messaging_consent and not patient.consent_recorded_by_id:
+            patient.consent_recorded_by = request.user
+        patient.save()
         audit.log("patient.edited", request=request, target=patient, summary=patient.full_name)
         messages.success(request, _("البيانات اتحفظت."))
         return redirect("patients:detail", pk=patient.pk)

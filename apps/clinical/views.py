@@ -13,6 +13,7 @@ from django.views.decorators.http import require_POST
 
 from apps.accounts.permissions import has_perm, require_perm
 from apps.audit import services as audit
+from apps.core.ratelimit import search_limit
 from apps.core.timeutils import CAIRO
 from apps.doctors.services import get_doctor
 from apps.patients import custom_fields
@@ -127,6 +128,7 @@ def desk_call(request, appt_pk):
 
 @require_perm("clinical.view")
 @desk_unlocked
+@search_limit
 def desk_search(request):
     q = request.GET.get("q", "").strip()
     patients = Patient.objects.for_org(request.organization).filter(is_active=True).search(q)[:10] if q else []
@@ -319,3 +321,33 @@ def desk_unlock(request):
         return redirect(nxt)
     audit.log("desk.unlock_failed", request=request)
     return render(request, "clinical/lock.html", {"next": nxt, "error": _("كلمة المرور غلط.")}, status=423)
+
+
+@require_perm("clinical.view")
+@desk_unlocked
+def patient_export(request, pk):
+    """04 §4.4: the patient's file as one PDF (when the patient asks for their data). Audited."""
+    from django.template.loader import render_to_string
+
+    from apps.documents import pdf as engine
+    from apps.prescriptions.models import Prescription, RxStatus
+
+    patient = _patient(request, pk)
+    ctx = {
+        **_header_ctx(patient),
+        "visits": Visit.objects.filter(patient=patient).select_related("vitals").order_by("created_at"),
+        "prescriptions": Prescription.objects.filter(patient=patient, status=RxStatus.FINAL).prefetch_related("items"),
+        "attachments": Attachment.objects.filter(patient=patient, is_archived=False),
+        "fonts": engine.font_css(),
+        "clinic": request.organization,
+        "generated_at": timezone.now(),
+    }
+    try:
+        data = engine.render_pdf(render_to_string("pdf/patient_summary.html", ctx), print_background=True,
+                                 prefer_css_page_size=True)  # fmt: skip
+    except Exception:
+        return HttpResponse(_("مش قادر أعمل الـPDF دلوقتي — جرب تاني."), status=503)
+    audit.log("patient.exported", request=request, target=patient, summary=patient.full_name)
+    resp = HttpResponse(data, content_type="application/pdf")
+    resp["Content-Disposition"] = f'attachment; filename="patient-{patient.file_number}.pdf"'
+    return resp

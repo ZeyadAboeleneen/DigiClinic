@@ -18,6 +18,7 @@ from apps.billing import services as billing
 from apps.billing.models import Payment
 from apps.clinical import services as clinical
 from apps.clinical.models import Visit, Vitals
+from apps.core.ratelimit import search_limit
 from apps.core.timeutils import CAIRO
 from apps.doctors.models import BookingMode, VisitType
 from apps.doctors.services import get_doctor
@@ -245,6 +246,7 @@ def payment(request, pk):
 
 
 @require_perm("reception.operate")
+@search_limit
 def walk_in(request):
     doctor = get_doctor(request.organization)
     visit_types = VisitType.objects.for_org(request.organization).filter(doctor=doctor, is_active=True)

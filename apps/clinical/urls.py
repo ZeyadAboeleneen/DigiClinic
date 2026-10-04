@@ -18,6 +18,7 @@ urlpatterns = [
     path("desk/patients/<int:pk>/history/", views.patient_history, name="history"),
     path("desk/patients/<int:pk>/attachments/", views.patient_attachments, name="attachments"),
     path("desk/patients/<int:pk>/data/", views.patient_data, name="data"),
+    path("desk/patients/<int:pk>/export.pdf", views.patient_export, name="export"),
     path("patients/<int:pk>/attachments/upload/", views.attachment_upload, name="attachment_upload"),
     path("attachments/<int:pk>/", views.attachment_file, name="attachment_file"),
 ]

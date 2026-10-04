@@ -9,24 +9,59 @@
 
 {% include "notifications/partials/scheduler_warning.html" %}
 
-<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-  <div class="card p-5">
-    <div class="text-sm text-stone-500">{% translate "حالة WhatsApp" %}</div>
-    <div class="mt-1 text-sm font-semibold {% if wa_state.state == 'ready' %}text-green-700{% elif wa_state.state == 'off' %}text-stone-400{% else %}text-red-700{% endif %}">
-      {% if wa_state.state == 'ready' %}🟢{% elif wa_state.state != 'off' %}🔴{% endif %} {{ wa_state.label }}
-      {% if wa_state.number and wa_state.state == 'ready' %}<span dir="ltr" class="text-xs font-normal text-stone-500">{{ wa_state.number }}</span>{% endif %}
-    </div>
-    {% if wa_state.state != 'ready' and wa_state.state != 'off' and can.settings_manage %}<a href="{% url 'messaging:whatsapp' %}" class="text-xs font-semibold text-brand">{% translate "اربطه ←" %}</a>{% endif %}
+{# --- today --- #}
+<section class="mb-6">
+  <h2 class="mb-2 text-sm font-bold text-stone-600">{% translate "النهارده" %}</h2>
+  <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+    {% with c=counts %}
+    <a href="{% if can.reception_operate %}{% url 'reception:today' %}{% else %}{% url 'scheduling:appointments_day' %}{% endif %}" class="card p-4"><div class="text-xs text-stone-500">{% translate "محجوز" %}</div><div class="text-2xl font-bold">{{ c.booked }}</div></a>
+    <div class="card p-4"><div class="text-xs text-stone-500">{% translate "وصل" %}</div><div class="text-2xl font-bold text-amber-700">{{ c.arrived }}</div></div>
+    <div class="card p-4"><div class="text-xs text-stone-500">{% translate "عند الدكتور" %}</div><div class="text-2xl font-bold text-sky-700">{{ c.in_consultation }}</div></div>
+    <div class="card p-4"><div class="text-xs text-stone-500">{% translate "تم" %}</div><div class="text-2xl font-bold text-green-700">{{ c.completed }}</div></div>
+    <div class="card p-4"><div class="text-xs text-stone-500">{% translate "لم يحضر" %}</div><div class="text-2xl font-bold text-red-700">{{ c.no_show }}</div></div>
+    {% endwith %}
   </div>
-  {% if can.messages_view %}
-  <a href="{% url 'notifications:log' %}?status=failed" class="card block p-5 hover:border-brand">
-    <div class="text-sm text-stone-500">{% translate "رسايل فشلت" %}</div>
-    <div class="mt-1 text-2xl font-bold {% if failed_messages %}text-red-700{% else %}text-stone-400{% endif %}">{{ failed_messages }}</div>
-  </a>
-  {% endif %}
-</div>
+</section>
 
-<div class="card mt-6 p-5 text-sm text-stone-500">
-  {% translate "شاشة الاستقبال وملف المريض والروشتة بيتضافوا في المراحل الجاية." %}
-</div>
+{# --- tasks --- #}
+<section class="mb-6">
+  <h2 class="mb-2 text-sm font-bold text-stone-600">{% translate "محتاج انتباه" %}</h2>
+  <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    {% if followups is not None %}
+    <a href="{% url 'reception:today' %}" class="card block p-4 hover:border-brand">
+      <div class="text-xs text-stone-500">{% translate "إعادات محتاجة حجز" %}</div>
+      <div class="text-2xl font-bold {% if followups %}text-amber-700{% else %}text-stone-400{% endif %}">{{ followups }}</div>
+    </a>
+    {% endif %}
+    {% if failed_messages is not None %}
+    <a href="{% url 'notifications:log' %}?status=failed" class="card block p-4 hover:border-brand">
+      <div class="text-xs text-stone-500">{% translate "رسايل فشلت" %}</div>
+      <div class="text-2xl font-bold {% if failed_messages %}text-red-700{% else %}text-stone-400{% endif %}">{{ failed_messages }}</div>
+    </a>
+    {% endif %}
+    <div class="card p-4">
+      <div class="text-xs text-stone-500">{% translate "حالة WhatsApp" %}</div>
+      <div class="mt-1 text-sm font-semibold {% if wa_state.state == 'ready' %}text-green-700{% elif wa_state.state == 'off' %}text-stone-400{% else %}text-red-700{% endif %}">
+        {% if wa_state.state == 'ready' %}🟢{% elif wa_state.state != 'off' %}🔴{% endif %} {{ wa_state.label }}
+        {% if wa_state.number and wa_state.state == 'ready' %}<span dir="ltr" class="text-xs font-normal text-stone-500">{{ wa_state.number }}</span>{% endif %}
+      </div>
+      {% if wa_state.state != 'ready' and wa_state.state != 'off' and can.settings_manage %}<a href="{% url 'messaging:whatsapp' %}" class="text-xs font-semibold text-brand">{% translate "اربطه ←" %}</a>{% endif %}
+    </div>
+    <div class="card p-4">
+      <div class="text-xs text-stone-500">{% translate "محرك الرسايل" %}</div>
+      <div class="mt-1 text-sm font-semibold {% if scheduler_alive %}text-green-700{% else %}text-red-700{% endif %}">{% if scheduler_alive %}🟢 {% translate "شغال" %}{% else %}🔴 {% translate "واقف" %}{% endif %}</div>
+    </div>
+  </div>
+</section>
+
+{# --- the month (doctor / owner) --- #}
+{% if month %}
+<section>
+  <div class="mb-2 flex items-center justify-between">
+    <h2 class="text-sm font-bold text-stone-600">{% translate "الشهر ده" %}</h2>
+    <a href="{% url 'dashboard:reports' %}" class="text-xs font-semibold text-brand">{% translate "التقارير ←" %}</a>
+  </div>
+  {% include "dashboard/partials/report_cards.html" with r=month %}
+</section>
+{% endif %}
 {% endblock %}

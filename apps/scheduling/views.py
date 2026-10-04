@@ -7,6 +7,7 @@ from django.utils.translation import gettext as _
 
 from apps.accounts.permissions import has_perm, require_perm
 from apps.audit import services as audit
+from apps.core.ratelimit import search_limit
 from apps.core.timeutils import CAIRO
 from apps.doctors.models import BookingMode, VisitType
 from apps.doctors.services import get_doctor
@@ -37,6 +38,7 @@ def booking_home(request):
 
 
 @require_perm("appointment.book")
+@search_limit
 def booking_search(request):
     q = request.GET.get("q", "").strip()
     patients = Patient.objects.for_org(request.organization).filter(is_active=True).search(q)[:8] if q else []

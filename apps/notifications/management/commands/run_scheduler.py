@@ -29,11 +29,22 @@ def beat(now=None):
     )
 
 
+def _daily_backup(now):
+    """07 §7.5: one backup per day (the first hourly check of the day that finds none), keep 14."""
+    from apps.core import backup
+
+    if not settings.AUTO_BACKUP or backup.backed_up_today(now):
+        return
+    backup.create_backup(now=now)
+    backup.prune(keep=14)
+
+
 # (name, interval, callable(now)).
 JOBS = [
     ("mark_no_shows", timedelta(minutes=2), lambda now: booking.mark_no_shows(now)),
     ("dispatch", timedelta(seconds=0), lambda now: dispatch.dispatcher.run_once(now)),
     ("cleanup", timedelta(days=1), lambda now: dispatch.cleanup(now)),
+    ("backup", timedelta(hours=1), lambda now: _daily_backup(now)),
 ]
 
 

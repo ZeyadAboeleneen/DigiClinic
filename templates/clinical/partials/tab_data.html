@@ -10,5 +10,8 @@
     <div><dt class="text-xs text-stone-500">{{ label }}</dt><dd>{% if value is True %}✓{% elif value is False or value is None %}—{% else %}{{ value }}{% endif %}</dd></div>
     {% endfor %}
   </dl>
-  {% if can.patient_edit_basic %}<a href="{% url 'patients:edit' patient.pk %}" class="mt-4 inline-block text-xs font-semibold text-brand">{% translate "تعديل البيانات" %}</a>{% endif %}
+  <div class="mt-4 flex gap-4 text-xs font-semibold">
+    {% if can.patient_edit_basic %}<a href="{% url 'patients:edit' patient.pk %}" class="text-brand">{% translate "تعديل البيانات" %}</a>{% endif %}
+    <a href="{% url 'clinical:export' patient.pk %}" class="text-brand">{% translate "تصدير ملف المريض (PDF)" %}</a>
+  </div>
 </div>

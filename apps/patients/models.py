@@ -66,6 +66,9 @@ class Patient(TenantScopedModel):
     )
     messaging_consent = models.BooleanField(_("موافق على استقبال رسايل"), default=False)
     consent_at = models.DateTimeField(null=True, blank=True)
+    consent_recorded_by = models.ForeignKey(
+        dj_settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     notes = models.TextField(_("ملاحظات إدارية"), blank=True)
     custom_fields = models.JSONField(default=dict, blank=True)
     no_show_count = models.PositiveIntegerField(default=0, editable=False)
@@ -97,6 +100,9 @@ class Patient(TenantScopedModel):
             self.whatsapp = self.phone
         if self.messaging_consent and not self.consent_at:
             self.consent_at = timezone.now()
+        elif not self.messaging_consent:
+            self.consent_at = None  # withdrawn: a later "yes" is a new consent with its own date
+            self.consent_recorded_by = None
         super().save(*args, **kwargs)
 
 

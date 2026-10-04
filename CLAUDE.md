@@ -262,3 +262,20 @@ gotchas and conventions introduced in that phase.
 - JS is tested in real headless Chromium from pytest (`tests/test_dictation.py`) with a fake `SpeechRecognition`. Note:
   newer Chromium has an unprefixed `SpeechRecognition` too, and Playwright must run in a worker thread (its event loop
   trips Django's async-safety check otherwise).
+
+## Polish notes (Phase 9)
+- Dashboard (`apps/dashboard/services.py`): `day_counts`, `report(org, start, end)` (visits, new patients, no-show
+  rate, revenue by method net of refunds, top diagnosis tags, reminder delivered/read rates from `Delivery` acks,
+  per-day table) — aggregate queries only. Home is role-based; `/reports/` needs `report.finance` (doctor/owner).
+- Backups: `manage.py backup` / `restore <file> --database NEW --media-root EMPTY [--create-db] [--check]`
+  (`apps/core/backup.py`): pg_dump -Fc + private media → tar.gz → Fernet (`BACKUP_KEY`, default
+  `FIELD_ENCRYPTION_KEY` — losing that key loses every backup). Restore **only into an empty DB and an empty media
+  folder**. `run_scheduler` makes one backup per day (hourly check, keeps 14; `AUTO_BACKUP=False` turns it off).
+  Postgres client binaries: `PG_BIN` → pgserver's bundled ones → PATH.
+- Security fixes from the review (`docs/security-review.md`): CSP + Referrer/Permissions-Policy middleware,
+  `X_FRAME_OPTIONS = "SAMEORIGIN"` (DENY breaks the print iframe), per-user rate limit on the 4 patient-search
+  endpoints (`apps/core/ratelimit.py`, 120/min; decorated views carry `ratelimit_key`), `Patient.consent_recorded_by`,
+  patient export PDF (`clinical:export`, audited).
+- Patient page now shows bookings, payments (payment.record) and sent + inbound messages (messages.view).
+- N+1 guard: `tests/test_performance.py` compares warm query counts at small vs large data — keep it green when
+  touching the reception/desk screens.

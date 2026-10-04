@@ -75,6 +75,12 @@
         {% translate "الخزنة" %}
       </a>
       {% endif %}
+      {% if can.report_finance %}
+      <a href="{% url 'dashboard:reports' %}" class="nav-link {% if url_name == 'dashboard:reports' %}active{% endif %}">
+        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+        {% translate "التقارير" %}
+      </a>
+      {% endif %}
       {% if can.user_manage or can.settings_manage or can.audit_view %}
       <div class="px-3 pb-1 pt-4 text-xs font-semibold text-stone-400">{% translate "الإدارة" %}</div>
       {% endif %}

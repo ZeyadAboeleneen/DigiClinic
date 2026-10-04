@@ -27,6 +27,8 @@ def create_patient(org, instance: Patient, *, by=None) -> Patient:
     instance.organization = org
     instance.file_number = next_file_number(org)
     instance.full_clean(exclude=["file_number", "name_normalized", "organization"])
+    if instance.messaging_consent and by is not None:
+        instance.consent_recorded_by = by
     instance.save()
     return instance
 
