@@ -107,12 +107,6 @@ def desk(request):
     return render(request, "clinical/desk.html", ctx)
 
 
-@require_perm("clinical.view")
-@desk_unlocked
-def desk_queue(request):
-    return render(request, "clinical/partials/queue.html", _queue_ctx(request))
-
-
 @require_POST
 @require_perm("clinical.edit")
 @desk_unlocked

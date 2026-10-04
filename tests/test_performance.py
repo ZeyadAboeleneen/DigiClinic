@@ -87,7 +87,6 @@ def test_doctor_screens_are_constant_in_queries(client, clinic):
     visit = clinical.start_visit(appt, by=clinic["doc"])
     urls = [
         reverse("clinical:visit", args=[visit.pk]),
-        reverse("clinical:queue"),
         reverse("clinical:history", args=[patient.pk]),
         reverse("clinical:record", args=[patient.pk]),
         reverse("prescriptions:patient_list", args=[patient.pk]),

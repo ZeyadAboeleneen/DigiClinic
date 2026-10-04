@@ -6,7 +6,6 @@ app_name = "clinical"
 
 urlpatterns = [
     path("desk/", views.desk, name="desk"),
-    path("desk/queue/", views.desk_queue, name="queue"),
     path("desk/search/", views.desk_search, name="search"),
     path("desk/lock/", views.desk_lock, name="lock"),
     path("desk/unlock/", views.desk_unlock, name="unlock"),

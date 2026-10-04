@@ -6,9 +6,11 @@
     <span id="save-status" class="text-stone-400"></span>
   </div>
   {% with editable=can.clinical_edit %}
-  {% include "clinical/partials/visit_text.html" with name="chief_complaint" label=_("الشكوى") value=visit.chief_complaint rows=2 %}
-  {% include "clinical/partials/visit_text.html" with name="history" label=_("التاريخ المرضي") value=visit.history rows=2 %}
-  {% include "clinical/partials/visit_text.html" with name="examination" label=_("الفحص") value=visit.examination rows=3 %}
+  <div class="grid gap-4 lg:grid-cols-2">
+  {% include "clinical/partials/visit_text.html" with name="chief_complaint" label=_("الشكوى") value=visit.chief_complaint rows=3 %}
+  {% include "clinical/partials/visit_text.html" with name="history" label=_("التاريخ المرضي") value=visit.history rows=3 %}
+  </div>
+  {% include "clinical/partials/visit_text.html" with name="examination" label=_("الفحص") value=visit.examination rows=4 %}
   {% include "clinical/partials/visit_text.html" with name="diagnosis" label=_("التشخيص") value=visit.diagnosis rows=2 list="diagnosis-list" %}
   <datalist id="diagnosis-list">{% for d in diagnoses %}<option value="{{ d }}">{% endfor %}</datalist>
   {% if diagnoses %}
@@ -19,11 +21,13 @@
     {% endfor %}
   </div>
   {% endif %}
-  {% include "clinical/partials/visit_text.html" with name="plan" label=_("الخطة") value=visit.plan rows=2 %}
-  {% include "clinical/partials/visit_text.html" with name="notes" label=_("ملاحظات") value=visit.notes rows=2 %}
+  <div class="grid gap-4 lg:grid-cols-2">
+  {% include "clinical/partials/visit_text.html" with name="plan" label=_("الخطة") value=visit.plan rows=3 %}
+  {% include "clinical/partials/visit_text.html" with name="notes" label=_("ملاحظات") value=visit.notes rows=3 %}
+  </div>
 
   {% if custom %}
-  <div class="grid gap-4 sm:grid-cols-2">
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
     {% for name, d, value in custom %}
     <div class="form-field">
       <label for="f-{{ name }}">{{ d.label_ar }}</label>

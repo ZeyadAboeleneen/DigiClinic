@@ -1,26 +1,23 @@
 {% extends "base.html" %}
 {% load i18n static %}
 {% block content %}
-<div class="grid gap-6 lg:grid-cols-[16rem_1fr]">
-  <aside class="order-2 space-y-4 lg:order-none">
-    <div class="card p-3">
-      <input type="search" placeholder="{% translate 'افتح ملف مريض...' %}" autocomplete="off"
-             class="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
-             hx-get="{% url 'clinical:search' %}" hx-trigger="input changed delay:250ms" hx-target="#desk-search" name="q">
-      <div id="desk-search"></div>
-    </div>
-    {% if can.drug_manage or can.rx_template_manage %}
-    <div class="card flex flex-wrap gap-3 p-3 text-xs font-semibold">
-      {% if can.drug_manage %}<a href="{% url 'prescriptions:drugs' %}" class="text-brand">{% translate "كتالوج الأدوية" %}</a>{% endif %}
-      {% if can.rx_template_manage %}<a href="{% url 'prescriptions:templates' %}" class="text-brand">{% translate "قوالب الروشتات" %}</a>{% endif %}
-    </div>
-    {% endif %}
-    <div id="desk-queue" class="card p-3" hx-get="{% url 'clinical:queue' %}" hx-trigger="every 10s" hx-swap="innerHTML">
-      {% include "clinical/partials/queue.html" %}
-    </div>
-  </aside>
-  <main class="min-w-0">{% block desk %}{% endblock %}</main>
+{% comment %}Full-width desk: a slim toolbar (open any patient's file + catalog links), then the patient. The waiting
+list lives on the reception screen; the doctor calls the next one with "إنهاء الكشف واستدعاء التالي".{% endcomment %}
+<div class="mb-4 flex flex-wrap items-start gap-3">
+  <div class="relative w-full sm:w-80">
+    <input type="search" placeholder="{% translate 'افتح ملف مريض...' %}" autocomplete="off"
+           class="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm"
+           hx-get="{% url 'clinical:search' %}" hx-trigger="input changed delay:250ms" hx-target="#desk-search" name="q">
+    <div id="desk-search" class="absolute inset-x-0 z-20 rounded-lg bg-white shadow-lg empty:hidden"></div>
+  </div>
+  {% if can.drug_manage or can.rx_template_manage %}
+  <div class="ms-auto flex flex-wrap gap-3 py-2 text-xs font-semibold">
+    {% if can.drug_manage %}<a href="{% url 'prescriptions:drugs' %}" class="text-brand">{% translate "كتالوج الأدوية" %}</a>{% endif %}
+    {% if can.rx_template_manage %}<a href="{% url 'prescriptions:templates' %}" class="text-brand">{% translate "قوالب الروشتات" %}</a>{% endif %}
+  </div>
+  {% endif %}
 </div>
+<main class="min-w-0">{% block desk %}{% endblock %}</main>
 
 {% if voice_enabled %}
 <p data-dictation-unsupported hidden class="fixed bottom-2 start-2 z-40 rounded-lg bg-stone-800 px-3 py-1.5 text-xs text-white opacity-80">
