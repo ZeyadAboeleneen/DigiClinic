@@ -11,6 +11,11 @@ ACTION_LABELS = {
     "delivery.queued": _("طلب إرسال"),
     "delivery.sent": _("اتبعت"),
     "delivery.failed": _("فشل الإرسال"),
+    "patient.created": _("إضافة مريض"),
+    "patient.edited": _("تعديل بيانات مريض"),
+    "patient.allergy_added": _("إضافة حساسية"),
+    "patient.condition_added": _("إضافة مرض مزمن"),
+    "patient.merged": _("دمج مريضين"),
     "settings.company": _("تعديل بيانات الشركة"),
     "settings.doctor": _("تعديل جدول الدكتور"),
     "settings.visit_type": _("تعديل نوع زيارة"),
@@ -25,6 +30,7 @@ ACTION_LABELS = {
 }
 
 ACTION_GROUPS = {
+    "patient": _("المرضى"),
     "delivery": _("الإرسال"),
     "auth": _("الدخول"),
     "user": _("المستخدمين"),

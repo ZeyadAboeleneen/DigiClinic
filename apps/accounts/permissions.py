@@ -12,15 +12,28 @@ from django.core.exceptions import PermissionDenied
 from apps.organizations.models import Role
 
 VIEWER = set()
-RECEPTION = VIEWER | set()
+RECEPTION = VIEWER | {
+    "patient.view_basic",
+    "patient.edit_basic",
+}
 DOCTOR = VIEWER | {
     "schedule.manage",
+    "patient.view_basic",
+    "patient.edit_basic",
+    "patient.view_medical",
+    "patient.edit_medical",
+    "patient.merge",
 }
 ADMIN = VIEWER | {
     "user.manage",
     "settings.manage",
     "audit.view",
     "schedule.manage",
+    "patient.view_basic",
+    "patient.edit_basic",
+    "patient.view_medical",
+    "patient.edit_medical",
+    "patient.merge",
 }
 OWNER = ADMIN | DOCTOR | RECEPTION
 

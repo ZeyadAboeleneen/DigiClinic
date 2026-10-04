@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "المرضى" %}{% endblock %}
+{% block content %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <h1 class="text-2xl font-bold">{% translate "المرضى" %}</h1>
+  {% if can.patient_edit_basic %}
+    <a href="{% url 'patients:add' %}" class="btn-primary">
+      <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
+      {% translate "مريض جديد" %}
+    </a>
+  {% endif %}
+</div>
+
+<div class="relative mb-4">
+  <svg class="pointer-events-none absolute inset-y-0 start-3 my-auto size-5 text-stone-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" d="m21 21-4.3-4.3M17 10.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0z"/></svg>
+  <input id="q" type="search" name="q" value="{{ q }}" autofocus autocomplete="off"
+         placeholder="{% translate 'ابحث بالاسم أو الرقم أو رقم الملف...' %}"
+         hx-get="{% url 'patients:list' %}" hx-target="#patient-rows" hx-swap="outerHTML"
+         hx-trigger="input changed delay:250ms, search" hx-push-url="true"
+         class="w-full rounded-lg border border-stone-300 bg-white py-2 ps-10 pe-3 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20">
+</div>
+
+{% include "patients/partials/list_rows.html" %}
+{% endblock %}

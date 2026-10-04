@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "المرضى" %}{% endblock %}
+{% block content %}
+<h1 class="mb-6 text-2xl font-bold">{% if mode == "edit" %}{% translate "تعديل بيانات المريض" %}{% else %}{% translate "مريض جديد" %}{% endif %}</h1>
+
+<form method="post" class="card space-y-4 p-4 sm:p-6" novalidate>
+  {% csrf_token %}
+  <div class="grid gap-4 sm:grid-cols-2">
+    {% include "partials/field.html" with field=form.full_name %}
+    {% include "partials/field.html" with field=form.gender %}
+  </div>
+  <div class="grid gap-4 sm:grid-cols-2">
+    {% include "partials/field.html" with field=form.date_of_birth %}
+    {% include "partials/field.html" with field=form.age_years %}
+  </div>
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div>
+      {% include "partials/field.html" with field=form.phone %}
+      {% if mode == "add" %}
+      <div id="duplicates" hx-get="{% url 'patients:duplicates_check' %}" hx-trigger="change from:#id_phone, keyup changed delay:400ms from:#id_phone"
+           hx-include="#id_phone" hx-target="#duplicates" hx-swap="innerHTML">
+        {% include "patients/partials/duplicates.html" %}
+      </div>
+      {% endif %}
+    </div>
+    <div>
+      {% include "partials/field.html" with field=form.whatsapp %}
+      <label class="mt-1 flex items-center gap-2 text-xs text-stone-600">{{ form.whatsapp_same_as_phone }} {% translate "نفس رقم الموبايل" %}</label>
+    </div>
+  </div>
+  <div class="grid gap-4 sm:grid-cols-2">
+    {% include "partials/field.html" with field=form.email %}
+    {% include "partials/field.html" with field=form.guardian_name %}
+  </div>
+  <div class="grid gap-4 sm:grid-cols-2">
+    {% include "partials/field.html" with field=form.address %}
+    {% include "partials/field.html" with field=form.occupation %}
+  </div>
+  <div class="grid gap-4 sm:grid-cols-2">
+    {% include "partials/field.html" with field=form.preferred_channel %}
+    <label class="mt-6 flex items-center gap-2 text-sm">{{ form.messaging_consent }} {% translate "موافق على استقبال رسايل التذكير" %}</label>
+  </div>
+  {% include "partials/field.html" with field=form.notes %}
+
+  <div class="flex justify-end gap-2">
+    <button type="submit" class="btn-primary">{% translate "حفظ" %}</button>
+  </div>
+</form>
+{% endblock %}

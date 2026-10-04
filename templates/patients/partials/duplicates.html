@@ -1,0 +1,7 @@
+{% load i18n %}
+{% if duplicates %}
+<p class="mt-1 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+  {% translate "فيه مريض بالرقم ده بالفعل:" %}
+  {% for d in duplicates %}<a href="{% url 'patients:detail' d.pk %}" class="font-semibold underline" target="_blank">{{ d.full_name }} (#{{ d.file_number }})</a>{% if not forloop.last %}، {% endif %}{% endfor %}
+</p>
+{% endif %}

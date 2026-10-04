@@ -1,0 +1,15 @@
+{% load i18n %}
+<ul class="divide-y divide-stone-100">
+  {% for c in candidates %}
+  <li class="flex items-center justify-between gap-2 py-2">
+    <span>{{ c.full_name }} <span class="font-mono text-xs text-stone-400" dir="ltr">#{{ c.file_number }} · {{ c.phone }}</span></span>
+    <form method="post" action="{% url 'patients:merge_confirm' primary.pk c.pk %}"
+          onsubmit="return confirm('{% blocktranslate with d=c.full_name p=primary.full_name %}تدمج {{ d }} في {{ p }}؟ الخطوة دي مش قابلة للتراجع.{% endblocktranslate %}')">
+      {% csrf_token %}
+      <button type="submit" class="btn-secondary text-xs">{% translate "دمج" %}</button>
+    </form>
+  </li>
+  {% empty %}
+  <li class="py-2 text-center text-stone-400">{% translate "اكتب اسم أو رقم للبحث" %}</li>
+  {% endfor %}
+</ul>

@@ -74,3 +74,20 @@ gotchas and conventions introduced in that phase.
   in place) and `org/settings/visit-types/`. Both gated by the `schedule.manage` permission (doctor/admin/owner).
 - `seed_org` now also seeds the doctor/working periods/visit types from `clinic.json`'s `doctor`/`working_periods`/
   `visit_types` keys (same create-or-skip-unless-`--force` rule as the org settings).
+
+## Patients notes (Phase 2)
+- `apps/patients`: `Patient`, `Allergy`, `ChronicCondition`, `PatientFieldDefinition` (model only — wired into
+  forms in Phase 6), `PatientSequence` (one row per org; `services.next_file_number()` assigns `file_number`
+  under `select_for_update()`, same pattern as Al-Barq's old `QuoteSequence`). `simple-history` on `Patient`.
+- `services.create_patient(org, instance, by=...)` is the only way to create a patient (wraps file-number
+  assignment in `transaction.atomic()`); build the unsaved instance via `PatientForm.save(commit=False)` first.
+- Phone is intentionally **not unique** (families share one number) — `services.possible_duplicates()` only
+  warns, never blocks. Search (`PatientQuerySet.search()`) matches partial phone digits (any of
+  `010.../+2010.../2010...`), `normalize_ar`-matched name, or file number.
+- Permissions: `patient.view_basic`/`edit_basic` (reception+) cover demographics, contact info and **allergies**
+  (shown as a safety banner per 04§4.3). `patient.view_medical`/`edit_medical` (doctor/admin/owner) gate
+  `ChronicCondition` — reception's patient detail page has no "الأمراض المزمنة" section at all. `patient.merge`
+  (doctor/admin/owner) via `services.merge_patients()` (moves allergies/chronic conditions, sets `merged_into`,
+  deactivates the duplicate — appointments/visits/attachments move too once those apps exist).
+- `import_patients <xlsx> --org <slug>` (columns: الاسم، الموبايل، السن، النوع، ملاحظات — idempotent, matched by
+  name+phone) and `seed_demo [--org] [--remove]` (30 fake patients, 3 sharing one phone number).

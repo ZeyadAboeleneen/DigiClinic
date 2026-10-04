@@ -1,0 +1,17 @@
+{% load i18n %}
+<div id="patient-rows" class="card overflow-hidden">
+  <ul class="divide-y divide-stone-100">
+    {% for p in patients %}
+    <li>
+      <a href="{% url 'patients:detail' p.pk %}" class="flex flex-wrap items-center gap-3 px-4 py-3 text-sm hover:bg-sand/60">
+        <span class="font-mono text-xs text-stone-400" dir="ltr">#{{ p.file_number }}</span>
+        <span class="font-semibold">{{ p.full_name }}</span>
+        <span class="text-stone-500" dir="ltr">{{ p.phone }}</span>
+        {% if p.allergies.exists %}<span class="badge bg-red-50 text-red-700">{% translate "حساسية" %}</span>{% endif %}
+      </a>
+    </li>
+    {% empty %}
+    <li class="px-4 py-10 text-center text-sm text-stone-500">{% translate "مفيش نتائج." %}</li>
+    {% endfor %}
+  </ul>
+</div>
