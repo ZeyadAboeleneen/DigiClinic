@@ -69,8 +69,11 @@
   /* voice mic inside the field (not under it, not over the text) */
   .dictate-inline, .dictate-corner { position: relative; }
   .dictate-inline > input { padding-inline-end: 4.5rem !important; }
+  .dictate-inline > .dictation-bar, .dictate-corner > .dictation-bar { z-index: 5; }
   .dictate-inline > .dictation-bar { position: absolute; inset-inline-end: .4rem; top: 50%; transform: translateY(-50%); margin-top: 0 !important; }
-  .dictate-inline .dictation-interim { display: none; }
+  /* what's being heard / why the mic stopped: a small note under the field */
+  .dictate-inline .dictation-interim { position: absolute; top: calc(100% + .55rem); inset-inline-end: 0; max-width: 22rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: .375rem; background: #fff; padding: .1rem .5rem; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+  .dictate-inline .dictation-interim:empty { display: none; }
   .dictate-corner > textarea { padding-bottom: 2.1rem !important; }
   .dictate-corner > .dictation-bar { position: absolute; inset-inline-end: .4rem; bottom: .45rem; margin-top: 0 !important; max-width: calc(100% - .8rem); }
   .dictate-corner .dictation-interim { @apply truncate rounded bg-white px-1; }

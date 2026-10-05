@@ -123,6 +123,7 @@
     const provider = new Provider();
     const collected = [];
     let silence = null;
+    let failed = false; // an error message stays visible after the session ends (it used to be wiped at once)
     const resetSilence = () => {
       clearTimeout(silence);
       silence = setTimeout(() => session.stop(), SILENCE_MS);
@@ -141,7 +142,8 @@
     const finish = () => {
       mic.style.background = "#fff";
       mic.style.color = "";
-      interimEl.textContent = "";
+      if (!failed) interimEl.textContent = "";
+      else setTimeout(() => { if (!active) interimEl.textContent = ""; }, 8000);
       if (active === session) active = null;
       if (el.dataset.dictate === "rx" && collected.length && window.htmx) {
         window.htmx.ajax("POST", el.dataset.dictateUrl, {
@@ -158,7 +160,10 @@
       else insertAtCursor(el, clean);
     });
     provider.onError((code) => {
-      if (code !== "no-speech" && code !== "aborted") interimEl.textContent = ERRORS[code] || "حصلت مشكلة في الإملاء.";
+      if (code !== "no-speech" && code !== "aborted") {
+        failed = true;
+        interimEl.textContent = ERRORS[code] || "حصلت مشكلة في الإملاء.";
+      }
       session.stop();
     });
     provider.onEnd(() => session.stop());
@@ -170,6 +175,8 @@
       provider.start(langPref());
       resetSilence();
     } catch (e) {
+      failed = true;
+      interimEl.textContent = "المايك مش راضي يبدأ — جرب تاني.";
       session.stop();
     }
   }
