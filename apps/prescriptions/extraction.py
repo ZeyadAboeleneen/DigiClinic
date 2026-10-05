@@ -21,7 +21,19 @@ from dataclasses import dataclass, field
 from .matching import MAX_PREFIX_WORDS, TOP_N, Candidate, _index, normalize, words_to_numbers
 
 STRONG = 93  # this close to a catalog name → accept even without a dose after it
-WEAK = 85  # minimum similarity; between WEAK and STRONG a dose/frequency/duration must follow
+WEAK = 85
+WEAK_LOOKAHEAD = 8  # a weak (not near-exact) name only counts if a dose/frequency/duration follows this closely
+FILLERS = {
+    "بس",
+    "يعني",
+    "كده",
+    "كدا",
+    "ده",
+    "دي",
+    "وده",
+    "ودي",
+    "دا",
+}  # skipped inside a regimen  # minimum similarity; between WEAK and STRONG a dose/frequency/duration must follow
 LOOKAHEAD = 22  # words after a drug name searched for its regimen (cut at the next drug name)
 MIN_CHARS = 4  # one-word mentions shorter than this are ignored ("كل", "ده"...)
 
@@ -36,6 +48,7 @@ STOPWORDS = set(
     علاج دوا دواء الدوا الروشته روشته التحاليل تحليل اشعه الاشعه الكشف الضغط السكر البرد الكحه الحراره
     في من على عن مع الي الى لحد لغايه بعد قبل لما لو اذا لان وبعدين بعدين يعني طبعا اصلا والله
     هو ايه ازاي ليه امتى فين مين كام ايوه لا مش مفيش فيه عندك عندي حاسس حاسه بيوجعك وجع الم
+    اللي اللى دا دى ودي وده تيجي تيجى تاخديه تاخدها تاخده تستخدمي تستخدميه تستخدمه استخدم او ولا
     الصبح بالليل النهارده بكره امبارح يوم يومين ايام اسبوع شهر ساعه ساعات مره مرتين
     """.split()
 )
@@ -50,6 +63,7 @@ PATTERNS = [
     ("dose", re.compile(rf"(?:{NUM}\s*)?(?:{DOSE_UNITS})(?:\s*{NUM})?")),
     # frequency
     ("freq", re.compile(r"كل\s*\d+\s*(?:ساعات|ساعه|ايام|يوم)")),
+    ("freq", re.compile(r"(?:مره|مرتين|\d+\s*مرات)?\s*كل يوم(?:\s*بالليل|\s*الصبح)?|يوم بعد يوم|يوم اه ويوم لا")),
     ("freq", re.compile(r"(?:مره|مرتين|\d+\s*مرات|\d+\s*مره)\s*(?:(?:واحده|1)\s*)?(?:يوميا|في اليوم|فاليوم|في الاسبوع|اسبوعيا|بالليل|الصبح)?")),
     ("freq", re.compile(r"عند اللزوم|عند الحاجه|قبل النوم|الصبح وبالليل|الصبح والليل")),
     # timing
@@ -57,6 +71,9 @@ PATTERNS = [
     # duration
     ("duration", re.compile(r"(?:لمده|مده)\s*(?:\d+\s*(?:ايام|يوم|اسابيع|اسبوع|شهور|شهر)|يومين|يوم|اسبوعين|اسبوع|شهرين|شهر)")),
     ("duration", re.compile(r"\d+\s*(?:ايام|اسابيع|شهور)")),
+    # "لمدة" is often misheard ("ولماضه", "لمدت"): any short ل-word before a duration counts
+    ("duration", re.compile(r"و?ل\w{1,4}\s*(?:اسبوعين|اسبوع|شهرين|شهر|يومين)")),
+    ("duration", re.compile(r"(?:اسبوعين|شهرين|يومين|تلت اسابيع)")),
     ("duration", re.compile(r"(?:اسبوعين|اسبوع|شهرين|شهر)\s*(?:كاملين|كامل)")),
 ]  # fmt: skip
 # Display polish for normalized phrases.
@@ -108,7 +125,7 @@ def _pretty(phrase: str) -> str:
 
 def regimen(words: list[str]) -> tuple[str, str]:
     """(instructions, duration) found in these (normalized, numbers-converted) words, in spoken order."""
-    text = " ".join(words)
+    text = " ".join(w for w in words if w not in FILLERS)
     found = []  # (start, kind, phrase)
     taken = []
     for kind, pattern in PATTERNS:
@@ -121,6 +138,7 @@ def regimen(words: list[str]) -> tuple[str, str]:
     instructions = " ".join(_pretty(p) for _s, kind, p in found if kind != "duration")
     durations = [_pretty(p) for _s, kind, p in found if kind == "duration"]
     duration = durations[0] if durations else ""
+    duration = re.sub(r"^و?ل\w{1,4}\s+(?=\D)", "", duration)  # a misheard "لمدة" ("ولماضه") → shown as "لمدة"
     if duration and not duration.startswith("لمدة"):
         duration = f"لمدة {duration}"
     return instructions, duration
@@ -155,6 +173,7 @@ def extract(org, transcript: str) -> list[Extracted]:
         starts = [
             i for i in range(len(norm) - n + 1)
             if norm[i] not in blocked and bare[i] not in blocked and not _is_number(norm[i])
+            and not any(t in STOPWORDS or t in UNITS for t in norm[i + 1 : i + n])
             and not any(_is_number(t) or t in UNITS for t in norm[i + 1 : i + n])
             and len("".join(bare[i : i + n])) >= MIN_CHARS
         ]  # fmt: skip
@@ -182,7 +201,7 @@ def extract(org, transcript: str) -> list[Extracted]:
             continue
         top_score = hits[0][0]
         if top_score < STRONG:
-            ins, dur = regimen(norm[i + n : i + n + LOOKAHEAD])
+            ins, dur = regimen(norm[i + n : i + n + WEAK_LOOKAHEAD])
             if not (ins or dur):
                 continue
         chosen.append((i, n, hits))

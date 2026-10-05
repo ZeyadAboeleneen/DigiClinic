@@ -253,3 +253,25 @@ def test_pleasantries_only_produce_no_medicines(org):
     from apps.prescriptions import extraction
 
     assert extraction.extract(org, "عامل ايه النهارده الحمد لله كويس شكرا يا دكتور مع السلامة") == []
+
+
+@pytest.mark.parametrize(
+    ("talk", "drug", "instructions", "duration"),
+    [
+        ("انتينال ده كويس الانتينال ده تستخدميه مره كل يوم ولماضه اسبوعين وهكتب لك", "ANTINAL 200MG 24 CAPS.",
+         "مرة كل يوم", "لمدة اسبوعين"),
+        ("براسيتامول الباراسيتامول دي مرتين في اليوم وده لمده ثلاث ايام بس", "PARACETAMOL 500MG 20 TAB.",
+         "مرتين في اليوم", "لمدة 3 أيام"),
+        ("اللي هو انتينال ده تاخديه مره واحده بس في اليوم قبل ما تيجي", "ANTINAL 200MG 24 CAPS.",
+         "مرة واحدة في اليوم", ""),
+    ],
+)  # fmt: skip
+def test_real_clinic_phrasings(org, talk, drug, instructions, duration):
+    from apps.prescriptions import extraction
+
+    for name, alias in (("ANTINAL 200MG 24 CAPS.", "انتينال"), ("PARACETAMOL 500MG 20 TAB.", "باراسيتامول"),
+                        ("VALLEY YEAST 30 TAB.", "فالي ييست")):  # fmt: skip
+        Drug.objects.create(organization=org, name=name, aliases_ar=[alias])
+    [item] = extraction.extract(org, talk)  # "اللي هو" must not match VALLEY YEAST
+    top = item.candidates[0].drug.name.upper()
+    assert (top.split()[0], item.instructions, item.duration) == (drug.split()[0], instructions, duration)
