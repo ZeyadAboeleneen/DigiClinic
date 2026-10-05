@@ -66,6 +66,12 @@
   /* prescription cells: look like text until hovered / focused */
   .quiet-input { @apply w-full min-w-0 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm transition hover:border-stone-200 focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/15 focus:outline-none pointer-coarse:border-stone-200 pointer-coarse:py-2; }
 
+  /* prescription line: a labelled box for الجرعة / المدة; an empty one is dashed amber so a missing dose shows */
+  .rx-box { @apply flex flex-col rounded-lg border border-stone-200 bg-stone-50 px-3 py-1.5 transition focus-within:border-brand focus-within:bg-white focus-within:ring-2 focus-within:ring-brand/15; }
+  .rx-box > span { @apply text-[11px] font-semibold text-stone-500; }
+  .rx-box > input { @apply w-full min-w-0 bg-transparent text-sm text-ink placeholder:text-stone-400 focus:outline-none pointer-coarse:py-1; }
+  .rx-box:has(> input:placeholder-shown) { @apply border-dashed border-amber-300 bg-amber-50/40; }
+
   /* voice mic inside the field (not under it, not over the text) */
   .dictate-inline, .dictate-corner { position: relative; }
   .dictate-inline > input { padding-inline-end: 4.5rem !important; }
