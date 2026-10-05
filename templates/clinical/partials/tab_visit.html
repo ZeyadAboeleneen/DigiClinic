@@ -1,10 +1,10 @@
 {% load i18n %}
 {% url 'clinical:visit_field' visit.pk as field_url %}
 <div class="space-y-3" id="visit-form" data-url="{{ field_url }}">
-  <div class="flex items-center justify-between text-xs">
-    <span class="font-semibold text-stone-500">{% translate "الكشف" %} · {% if visit.status == "finished" %}{% translate "الكشف خلص — التعديلات بتتسجل في السجل" %}{% else %}{% translate "بيتحفظ تلقائي" %}{% endif %}</span>
-    <span id="save-status" class="text-stone-400"></span>
-  </div>
+  <h2 class="ws-title">{% translate "الكشف" %}
+    <span class="text-xs font-normal text-stone-400">{% if visit.status == "finished" %}{% translate "خلص — التعديلات بتتسجل في السجل" %}{% else %}{% translate "بيتحفظ تلقائي" %}{% endif %}</span>
+    <span id="save-status" class="ms-auto text-xs font-normal text-stone-400"></span>
+  </h2>
   {% with editable=can.clinical_edit %}
   {% include "clinical/partials/visit_text.html" with name="chief_complaint" label=_("الشكوى") value=visit.chief_complaint rows=2 chips=phrases.chief_complaint %}
   <details class="group" {% if visit.history %}open{% endif %}>

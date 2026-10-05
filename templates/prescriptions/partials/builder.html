@@ -1,7 +1,7 @@
 {% load i18n %}
 <div id="rx-builder" class="space-y-4" data-status="{{ rx.status }}" data-items="{{ items|length }}" data-pdf="{% url 'prescriptions:pdf' rx.pk %}?mode=print">
-  <div class="flex flex-wrap items-center gap-2">
-    <h2 class="font-bold">{% translate "الروشتة" %}</h2>
+  <div class="ws-title mb-0 flex-wrap">
+    <h2>{% translate "الروشتة" %}</h2>
     {% if rx.display_number %}<span class="badge bg-stone-100 font-mono text-stone-700" dir="ltr">{{ rx.display_number }}</span>{% endif %}
     <span class="badge {% if rx.status == 'final' %}bg-green-50 text-green-700{% elif rx.status == 'voided' %}bg-red-50 text-red-700{% else %}bg-amber-50 text-amber-700{% endif %}">{{ rx.get_status_display }}</span>
     {% if rx.revision_of_id and rx.is_editable %}<span class="text-xs text-stone-500">{% blocktranslate with n=rx.revision %}نسخة معدلة R{{ n }}{% endblocktranslate %}</span>{% endif %}
@@ -45,10 +45,11 @@
   {% endif %}
 
   {# --- add a drug --- #}
-  <div class="card space-y-3 p-4">
+  <div class="space-y-2">
     {% if categories %}
     {# Category buttons (the doctor's specialty list, in order). The choice sticks for the next drug (rx_js.html). #}
-    <div id="rx-cats" class="flex flex-wrap items-center gap-1" data-doctor="{{ rx.doctor_id }}"
+    {# One line of categories; "المزيد" opens the rest (the chosen one is always visible: it's restored first). #}
+    <div id="rx-cats" class="flex max-h-[1.85rem] flex-wrap items-center gap-1 overflow-hidden" data-doctor="{{ rx.doctor_id }}"
          data-search-url="{% url 'prescriptions:drug_search' rx.pk %}">
       <button type="button" class="rx-cat rounded-full border border-stone-300 px-3 py-1 text-xs font-semibold" data-cat="">{% translate "الكل" %}</button>
       {% for dc in categories %}
@@ -56,6 +57,9 @@
       {% endfor %}
       {% if can.drug_manage %}<a href="{% url 'prescriptions:categories' %}" class="px-1 text-xs text-stone-400 hover:text-brand" title="{% translate 'تعديل التصنيفات' %}">⚙</a>{% endif %}
     </div>
+    {% if categories|length > 6 %}
+    <button type="button" class="text-xs font-semibold text-stone-500 hover:text-brand" id="rx-cats-more" data-more="{% translate 'كل التصنيفات ▾' %}" data-less="{% translate 'أقل ▴' %}" onclick="rxCatsOpen(!document.getElementById('rx-cats').classList.contains('max-h-none'))">{% translate "كل التصنيفات ▾" %}</button>
+    {% endif %}
     {% elif can.drug_manage %}
     <p class="text-xs text-stone-500">{% translate "اختار تخصصك مرة واحدة عشان تظهر تصنيفات الأدوية هنا:" %} <a href="{% url 'prescriptions:categories' %}" class="font-semibold text-brand">{% translate "تصنيفات الأدوية" %}</a></p>
     {% endif %}
@@ -97,7 +101,7 @@
   <div class="card divide-y divide-stone-100">
     {% for it in items %}
     {# Two lines that always fit the pane: name + actions, then form / dose / duration (no sideways scrolling). #}
-    <div class="grid grid-cols-[minmax(0,5.5rem)_minmax(0,2fr)_minmax(0,1fr)] items-center gap-1.5 p-3 {% if it.needs_review %}bg-amber-50{% endif %}" data-item="{{ it.pk }}">
+    <div class="grid grid-cols-[minmax(0,4.5rem)_minmax(0,1.6fr)_minmax(0,1fr)] items-center gap-1.5 p-3 {% if it.needs_review %}bg-amber-50{% endif %}" data-item="{{ it.pk }}">
       {% url 'prescriptions:item_update' it.pk as cell_url %}
       <input class="rx-cell col-span-2 row-start-1 w-full min-w-0 rounded-md border border-stone-200 px-2 py-1 text-sm font-semibold" dir="ltr" value="{{ it.drug_name }}" name="value"
              hx-post="{{ cell_url }}" hx-vals='{"field": "drug_name"}' hx-trigger="input changed delay:600ms, change" hx-target="#cell-{{ it.pk }}" aria-label="{% translate 'الدوا' %}">
@@ -125,12 +129,14 @@
   <datalist id="rx-forms">{% for f in drug_forms %}<option value="{{ f }}">{% endfor %}</datalist>
 
   {% if phrases %}
-  <div class="flex flex-wrap gap-1" id="rx-phrases">
-    <span class="text-xs text-stone-500">{% translate "جمل جاهزة:" %}</span>
+  <details class="group text-xs" id="rx-phrases-box" ontoggle="try { localStorage.setItem('rx-phrases-open', this.open ? '1' : '') } catch (e) {}">
+    <summary class="cursor-pointer select-none font-semibold text-stone-500 hover:text-brand">{% translate "جمل جاهزة للجرعة والمدة" %} <span class="group-open:hidden">▾</span><span class="hidden group-open:inline">▴</span></summary>
+  <div class="mt-2 flex flex-wrap gap-1" id="rx-phrases">
     {% for p in phrases %}
     <button type="button" class="rounded-md border border-stone-200 bg-stone-50 px-2 py-0.5 text-xs hover:bg-stone-100" data-kind="{{ p.kind }}" data-text="{{ p.text }}">{{ p.text }}</button>
     {% endfor %}
   </div>
+  </details>
   {% endif %}
 
   {# --- advice, next visit, finalize --- #}

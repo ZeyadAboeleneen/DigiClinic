@@ -31,9 +31,9 @@ in a drawer over the page, so the visit being written is never left (or reloaded
     <a href="#pane-visit" class="btn-ghost whitespace-nowrap px-3 lg:hidden">{% translate "الكشف" %}</a>
     <a href="#pane-rx" class="btn-ghost whitespace-nowrap px-3 lg:hidden">{% translate "الروشتة" %}</a>
     {% endif %}
-    <button type="button" class="btn-ghost whitespace-nowrap px-3" onclick="openDrawer('{% url 'clinical:history' patient.pk %}?visit={{ visit.pk }}', '{% translate 'التاريخ' %}')">🗂 {% translate "التاريخ" %}</button>
+    <button type="button" class="btn-ghost whitespace-nowrap px-3" onclick="openDrawer('{% url 'clinical:history' patient.pk %}?visit={{ visit.pk }}', '{% translate 'التاريخ' %}')">{% translate "التاريخ" %}</button>
     {% if can.prescription_write %}<button type="button" class="btn-ghost whitespace-nowrap px-3" onclick="openDrawer('{% url 'prescriptions:patient_list' patient.pk %}', '{% translate 'الروشتات' %}')">{% translate "الروشتات" %}</button>{% endif %}
-    <button type="button" class="btn-ghost whitespace-nowrap px-3" onclick="openDrawer('{% url 'clinical:attachments' patient.pk %}?visit={{ visit.pk }}', '{% translate 'المرفقات' %}')">📎 {% translate "المرفقات" %}</button>
+    <button type="button" class="btn-ghost whitespace-nowrap px-3" onclick="openDrawer('{% url 'clinical:attachments' patient.pk %}?visit={{ visit.pk }}', '{% translate 'المرفقات' %}')">{% translate "المرفقات" %}</button>
     <button type="button" class="btn-ghost whitespace-nowrap px-3" onclick="openDrawer('{% url 'clinical:data' patient.pk %}', '{% translate 'البيانات' %}')">{% translate "البيانات" %}</button>
     {% if can.clinical_edit and visit.status != "finished" %}
     <span class="ms-auto"></span>
