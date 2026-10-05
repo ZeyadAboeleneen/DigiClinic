@@ -54,21 +54,3 @@
   .nav-link.active { @apply bg-brand-soft text-brand; }
   .nav-link.disabled { @apply cursor-default text-stone-400 hover:bg-transparent hover:text-stone-400; }
 }
-
-/* --- doctor workspace ------------------------------------------------------------------------ */
-@layer components {
-  .ws-title { @apply mb-3 flex items-center gap-2 border-b border-stone-200 pb-2 text-sm font-bold text-ink; }
-  /* calmer, denser fields: small grey labels, light borders, white only where you type */
-  #visit-form .form-field { @apply relative; }
-  #visit-form .form-field label { @apply text-xs font-semibold text-stone-500; }
-  #visit-form .form-field textarea,
-  #visit-form .form-field input:not([type=checkbox]) { @apply border-stone-200 bg-stone-50/60 leading-relaxed focus:bg-white; }
-  #visit-form .form-field textarea { @apply resize-y; }
-}
-/* The 🎤 bar sits on the label line (end side) instead of taking its own row under every field. */
-#visit-form .form-field > .dictation-bar { position: absolute; top: -2px; inset-inline-end: 0; margin-top: 0 !important; }
-#visit-form .form-field > .dictation-bar .dictation-interim { max-width: 14rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-#visit-form details .form-field > .dictation-bar { top: -1.6rem; }
-#rx-search + .dictation-bar { position: absolute; top: 50%; transform: translateY(-50%); inset-inline-end: 6px; margin-top: 0 !important; }
-#rx-search + .dictation-bar .dictation-interim { position: absolute; top: calc(100% + 10px); inset-inline-end: 0; width: max-content; max-width: 22rem; background: #fff; border-radius: 6px; padding: 0 4px; }
-#rx-search { padding-inline-end: 5.5rem; }

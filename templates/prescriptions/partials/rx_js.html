@@ -37,15 +37,7 @@
       b.classList.toggle("text-white", on);
       b.classList.toggle("border-brand", on);
     });
-    window.rxCatsOpen = (open) => {
-      const box = document.getElementById("rx-cats"), btn = document.getElementById("rx-cats-more");
-      if (!box) return;
-      box.classList.toggle("max-h-none", open);
-      if (btn) btn.textContent = open ? btn.dataset.less : btn.dataset.more;
-    };
     const restore = () => {
-      const phrases = document.getElementById("rx-phrases-box");
-      try { if (phrases) phrases.open = localStorage.getItem("rx-phrases-open") === "1"; } catch (e) { /* ignore */ }
       const box = document.getElementById("rx-cats");
       const input = document.getElementById("rx-category");
       if (!box || !input) return;
@@ -54,8 +46,6 @@
       if (saved && !box.querySelector(`.rx-cat[data-cat="${saved}"]`)) saved = "";  // category was removed
       input.value = saved;
       mark(box, saved);
-      const chip = saved && box.querySelector(`.rx-cat[data-cat="${saved}"]`);
-      if (chip && chip.offsetTop > box.firstElementChild.offsetTop + 4) rxCatsOpen(true);  // chosen one is on a hidden line
     };
     document.addEventListener("click", (e) => {
       const chip = e.target.closest?.("#rx-cats .rx-cat");
