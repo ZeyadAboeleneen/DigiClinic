@@ -232,3 +232,24 @@ def test_js_inserts_final_text_at_cursor_with_commands():
     assert out["value"] == "أهلا كحة من يومين\nحرارة."
     assert out["inputs"] >= 1  # the field's autosave hook fires
     assert out["started"] is False
+
+
+def test_conversation_keeps_only_medicines_dose_and_duration(client, desk, org):
+    client.force_login(desk["doc"])
+    rx = desk["rx"]
+    talk = ("ازيك يا حاج متقلقش ده دور برد عادي هكتبلك فلاجيل قرص تلات مرات يوميا بعد الأكل لمدة اسبوع "
+            "وخلي بالك من الأكل واشرب سوايل كتير وبنادول اكسترا عند اللزوم ولو الحرارة زادت كلمني")  # fmt: skip
+    html = client.post(reverse("prescriptions:dictate", args=[rx.pk]), {"text": talk}).content.decode()
+    assert "Flagyl 500" in html and "Panadol Extra" in html
+    assert "لمدة أسبوع" in html and "عند اللزوم" in html
+    assert "سوايل" not in html.split("«")[0]  # the chit-chat is not offered as instructions
+    flagyl = Drug.objects.get(organization=org, name="Flagyl 500")
+    client.post(reverse("prescriptions:dictate_add", args=[rx.pk]),
+                {"drug": flagyl.pk, "spoken": "فلاجيل", "instructions": "قرص 3 مرات يوميًا", "duration": "لمدة أسبوع"})  # fmt: skip  # noqa: E501
+    assert rx.items.get().duration == "لمدة أسبوع"
+
+
+def test_pleasantries_only_produce_no_medicines(org):
+    from apps.prescriptions import extraction
+
+    assert extraction.extract(org, "عامل ايه النهارده الحمد لله كويس شكرا يا دكتور مع السلامة") == []

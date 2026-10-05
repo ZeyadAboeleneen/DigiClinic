@@ -20,7 +20,7 @@ from apps.documents import pdf as engine
 from apps.notifications.models import NotificationSettings
 
 from . import categories as cats
-from . import matching, pdf, safety, services
+from . import extraction, matching, pdf, safety, services
 from .forms import DrugForm, PrescriptionSettingsForm, RxNotifyForm
 from .models import (
     DRUG_FORMS,
@@ -271,10 +271,16 @@ def item_to_catalog(request, item_pk):
 @require_perm("prescription.write")
 @desk_unlocked
 def dictate(request, pk):
-    """Dictated text → one row per spoken line with the top-3 catalog matches. Nothing is saved here."""
+    """Dictated speech → one row per medicine mentioned (name + الجرعة + المدة), ignoring the rest of the
+    conversation. If no medicine is recognised at all, fall back to one row per spoken line. Nothing is saved here."""
     rx = _rx(request, pk)
-    lines = matching.match_text(request.organization, request.POST.get("text", "")[:2000])
-    return render(request, "prescriptions/partials/dictation_results.html", {"rx": rx, "lines": lines})
+    text = request.POST.get("text", "")[:4000]
+    lines = extraction.extract(request.organization, text)
+    extracted = bool(lines)
+    if not extracted:
+        lines = matching.match_text(request.organization, text[:2000])
+    ctx = {"rx": rx, "lines": lines, "extracted": extracted}
+    return render(request, "prescriptions/partials/dictation_results.html", ctx)
 
 
 @require_POST
@@ -293,6 +299,7 @@ def dictate_add(request, pk):
             drug=drug,
             drug_name=request.POST.get("spoken", ""),
             instructions=instructions or None,
+            duration=request.POST.get("duration", "").strip() or None,
             needs_review=True,
         )
     except services.PrescriptionError as e:

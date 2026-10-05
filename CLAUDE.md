@@ -329,3 +329,12 @@ gotchas and conventions introduced in that phase.
   scored with rapidfuzz `cdist(..., fuzz.ratio, workers=-1)` (numpy dependency). ~0.2 s per dictated line on 25k
   drugs; the index rebuilds when the catalog's count/max(updated_at) changes (~1.5 s).
 - Category search puts trade names starting with the text first, then generic/alias prefix matches.
+
+## Conversational dictation notes
+- `apps/prescriptions/extraction.extract(org, transcript)` pulls medicines out of free conversation: 1–3 word
+  windows (stopwords/units/modifiers/numbers can't start a name, و/ال clitics stripped) scored with `cdist` against
+  the voice index; weak matches need a regimen nearby. A number/unit/modifier after the name is the strength (picks
+  the matching variant, never ends up in instructions). Regimen = whole-word `PATTERNS` (dose/freq/timing/duration)
+  up to the next mention; everything else is ignored. Same drug said twice → one line.
+- `dictate` view uses it first and falls back to line-by-line `match_text` only when no medicine is recognised.
+  `dictate_add` now accepts `duration`.
