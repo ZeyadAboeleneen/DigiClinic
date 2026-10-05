@@ -338,3 +338,9 @@ gotchas and conventions introduced in that phase.
   up to the next mention; everything else is ignored. Same drug said twice → one line.
 - `dictate` view uses it first and falls back to line-by-line `match_text` only when no medicine is recognised.
   `dictate_add` now accepts `duration`.
+- Robustness rules in `extraction.py` (each pinned by a test in `tests/test_dictation.py`): prefix variants (و/ال/ب/ف/ك/ل
+  tried, never forced), sound-alike letters (`_SOUNDS`, ر/ل…), names heard split in two ("اوج منتين"), spoken English
+  (`SPOKEN_EN`, "اي 1" → A1), Arabic vs English-only names by consonant skeleton (weak: needs a dose), glued numbers
+  ("كونكور5"), compound numbers ("ميتين وخمسين"), number ≥ 20 after a name = strength, number + مل/نقط = dose,
+  `NEGATIONS` before a name drop it ("بلاش البنادول"), `CORRECTIONS` after it drop it ("لا قصدي"), `TYPES` near the
+  name pick the form, `VARIANT_WORDS` (PLUS/XR…) only when said, repeated phrases written once.

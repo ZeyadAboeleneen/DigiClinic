@@ -56,7 +56,7 @@ STOPWORDS = set(
 
 DOSE_UNITS = (
     r"قرص|اقراص|حبايه|حبايات|حبه|حبتين|كبسوله|كبسولات|معلقه|معالق|معلقتين|نقطه|نقط|نقطتين|بخه|بختين|بخات|"
-    r"حقنه|حقن|امبول|امبوله|كيس|اكياس|ظرف|اظرف|مل|سم|لبوسه|لبوس|فوار|لزقه|دهان"
+    r"حقنه|حقن|امبول|امبوله|كيس|اكياس|ظرف|اظرف|مل|سم|سي سي|cc|ml|وحده|وحدات|لبوسه|لبوس|فوار|لزقه|دهان|طبقه رقيقه"
 )
 NUM = r"(?:\d+(?:[.,]\d+)?|½|¼|و½|نص|ونص|ربع)"
 PATTERNS = [
@@ -69,7 +69,7 @@ PATTERNS = [
     ("freq", re.compile(r"طول اليوم|بعد (?:الشاور|الحمام|الاستحمام|الدش)")),
     ("freq", re.compile(r"عند اللزوم|عند الحاجه|قبل النوم|الصبح وبالليل|الصبح والليل")),
     # timing
-    ("timing", re.compile(r"(?:قبل|بعد|مع)\s*(?:الاكل|الفطار|الفطور|الغدا|الغداء|العشا|العشاء|الوجبات|الاكل)|علي الريق|على الريق")),
+    ("timing", re.compile(r"(?:قبل|بعد|مع)\s*(?:الاكل|الفطار|الفطور|الغدا|الغداء|العشا|العشاء|الوجبات|الاكل)(?:\s*ب(?:نص|ربع)\s*ساعه|\s*ب\d+\s*دقيقه)?|علي الريق|على الريق")),
     # duration
     ("duration", re.compile(r"(?:لمده|مده)\s*(?:\d+\s*(?:ايام|يوم|اسابيع|اسبوع|شهور|شهر)|يومين|يوم|اسبوعين|اسبوع|شهرين|شهر)")),
     ("duration", re.compile(r"\d+\s*(?:ايام|اسابيع|شهور)")),
@@ -77,6 +77,7 @@ PATTERNS = [
     ("duration", re.compile(r"و?ل\w{1,4}\s*(?:اسبوعين|اسبوع|شهرين|شهر|يومين)")),
     ("duration", re.compile(r"(?:اسبوعين|شهرين|يومين|تلت اسابيع)")),
     ("duration", re.compile(r"(?:اسبوعين|اسبوع|شهرين|شهر)\s*(?:كاملين|كامل)")),
+    ("duration", re.compile(r"باستمرار|علي طول|على طول|بشكل مستمر|مدي الحياه|لحد ما (?:العلبه |الدوا |الكورس )?(?:تخلص|يخلص)|لحد الزياره الجايه|لحد ما نشوفك")),
 ]  # fmt: skip
 # Display polish for normalized phrases.
 PRETTY = [
@@ -137,8 +138,80 @@ TYPES = {normalize(k): v for k, v in {
 }.items()}  # fmt: skip
 # Name modifiers and strength units never start a drug name ("اكسترا" alone is not a drug; "جرام" is a strength).
 MODIFIERS = {normalize(w) for w in "اكسترا بلس فورت فورتي ريتارد اس ار اكس ال".split()}
-UNITS = {normalize(w) for w in "جرام جم جرامات مجم ملجم مللي ملي مل مليجرام ميكرو وحده وحدات".split()}
+UNITS = {
+    normalize(w)
+    for w in "جرام جم جرامات مجم ملجم مللي ملي مل مليجرام ميليجرام ميلي ميكرو ميكروجرام وحده وحدات mg gm g ml mcg iu".split()
+}
+COUNTED = {normalize(w) for w in "مل ml مللي ملي سم cc نقطه نقط وحده وحدات".split()}  # number + these = a dose
+# Said right before a name, these mean the drug is being stopped / not prescribed ("بلاش البنادول", "وقفي الكونكور").
+NEGATIONS = {
+    normalize(w)
+    for w in """
+    مش بلاش وقف وقفي اوقف اوقفي بطل بطلي متاخدش ماتاخدش متاخديش ماتاخديش متخدش شيل شيلي الغي لغي بدل
+    ممنوع متستخدميش متستخدمش متكملش متكمليش كفايه
+""".split()
+}
+# Said right after a name: the doctor corrects themself ("كونكور... لا قصدي كونكور بلس") → the first name is dropped.
+CORRECTIONS = {normalize(w) for w in "قصدي اقصد غلط لالا".split()}
 _CLITICS = ("وال", "بال", "فال", "لل", "ال", "و")  # "والاوجمنتين" → "اوجمنتين"
+_SOFT_CLITICS = ("ب", "ف", "ك", "و", "ل")  # tried as well, never instead ("بنادول" starts with ب)
+_GLUED = re.compile(r"(?<=[^\W\d_])(?=\d)|(?<=\d)(?=[^\W\d_])")  # "كونكور5" / "500mg" → split
+_COMPOUND = re.compile(r"\b([1-9]00)\s+و([1-9]\d?)\b")  # "200 و50" (ميتين وخمسين) → 250
+
+
+def _prepare(transcript: str) -> str:
+    text = _PUNCT.sub(" ", words_to_numbers(transcript or ""))
+    text = _COMPOUND.sub(lambda m: str(int(m[1]) + int(m[2])), text)
+    return _GLUED.sub(" ", text)
+
+
+def _variants(token: str) -> set[str]:
+    """Spellings of one spoken word to try against the catalog: as heard, without و/ال, without a soft prefix."""
+    out = {token, _bare(token)}
+    for p in _SOFT_CLITICS:
+        if token.startswith(p) and len(token) - len(p) >= MIN_CHARS:
+            out.add(token[len(p) :])
+    return out
+
+
+# Arabic speech vs an English catalog name with no usable Arabic alias: compare consonant "skeletons" in one
+# alphabet ("اموكسيسيلين" ≈ "amoxicillin"). Weakest evidence of all, so it only counts with a dose after it.
+_EN_DIGRAPHS = [("ph", "f"), ("th", "t"), ("sh", "S"), ("ch", "k"), ("ck", "k"), ("qu", "k"), ("x", "ks"),
+                ("ce", "se"), ("ci", "si"), ("cy", "sy")]  # fmt: skip
+_EN_SKEL = str.maketrans({"p": "b", "c": "k", "q": "k", "v": "f", "z": "s", "j": "g", **dict.fromkeys("aeiouyw", "")})
+_AR_SKEL = str.maketrans({
+    "ب": "b", "پ": "b", "ت": "t", "ط": "t", "ث": "s", "س": "s", "ص": "s", "ز": "s", "ذ": "s", "ظ": "s", "د": "d",
+    "ض": "d", "ك": "k", "ق": "k", "ج": "g", "غ": "g", "ف": "f", "ڤ": "f", "ل": "l", "ر": "r", "م": "m", "ن": "n",
+    "ه": "h", "ح": "h", "خ": "k", "ش": "S", **dict.fromkeys("اويىءئؤعة", ""),
+})  # fmt: skip
+SKELETON_MIN = 5  # consonants; shorter skeletons collide with too many names
+SKELETON_CUTOFF = 92
+SKELETON_PENALTY = 8  # → at most 92: never "strong" on its own
+
+
+def _skeleton_en(word: str) -> str:
+    word = re.sub(r"[^a-z]", "", word.lower())
+    for a, b in _EN_DIGRAPHS:
+        word = word.replace(a, b)
+    return re.sub(r"(.)\1+", r"\1", word.translate(_EN_SKEL))
+
+
+def _skeleton_ar(word: str) -> str:
+    return re.sub(r"(.)\1+", r"\1", word.translate(_AR_SKEL))
+
+
+def _skeleton_heads(idx) -> tuple[list[str], list[int]]:
+    """Skeletons of the first word of every English name in the index (cached on the index)."""
+    if "skeletons" not in idx.__dict__:
+        heads, owners = [], []
+        for h, pk in zip(idx.heads[1], idx.owners[1], strict=True):
+            if h.isascii():
+                sk = _skeleton_en(h)
+                if len(sk) >= SKELETON_MIN:
+                    heads.append(sk)
+                    owners.append(pk)
+        idx.__dict__["skeletons"] = (heads, owners)
+    return idx.__dict__["skeletons"]
 
 
 def _bare(token: str) -> str:
@@ -199,8 +272,9 @@ def regimen(words: list[str]) -> tuple[str, str]:
     instructions = _join([_pretty(p) for _s, kind, p in found if kind != "duration"])
     durations = [_pretty(p) for _s, kind, p in found if kind == "duration"]
     duration = durations[0] if durations else ""
-    duration = re.sub(r"^و?ل\w{1,4}\s+(?=\D)", "", duration)  # a misheard "لمدة" ("ولماضه") → shown as "لمدة"
-    if duration and not duration.startswith("لمدة"):
+    # a misheard "لمدة" ("ولماضه") → shown as "لمدة"; "باستمرار" / "لحد ما العلبة تخلص" stay as said
+    duration = re.sub(r"^و?ل\w{1,4}\s+(?=(?:اسبوع|شهر|يوم))", "", duration)
+    if duration and re.match(r"\d|اسبوع|أسبوع|شهر|يوم", duration):
         duration = f"لمدة {duration}"
     return instructions, duration
 
@@ -219,8 +293,7 @@ def extract(org, transcript: str) -> list[Extracted]:
     import numpy as np
     from rapidfuzz import fuzz, process
 
-    raw = _PUNCT.sub(" ", words_to_numbers(transcript or ""))
-    tokens = raw.split()
+    tokens = _prepare(transcript).split()
     norm = [normalize(t) for t in tokens]
     bare = [_bare(t) for t in norm]  # for matching names only (regimen patterns use `norm`)
     blocked = STOPWORDS | MODIFIERS | UNITS | set(TYPES)
@@ -241,18 +314,43 @@ def extract(org, transcript: str) -> list[Extracted]:
         if not idx.heads[n]:
             continue
         owners = idx.owners[n]
-        queries = [" ".join(bare[i : i + n]) for i in starts]
+        # each window in its spellings: the first word with/without a prefix (و، ال، ب، ف...)
+        qs = [(i, " ".join([v, *bare[i + 1 : i + n]])) for i in starts for v in _variants(norm[i])]
+        qs = [(i, q) for i, q in qs if len(q.replace(" ", "")) >= MIN_CHARS]
+        queries = [q for _i, q in qs]
         scores = process.cdist(queries, idx.heads[n], scorer=fuzz.ratio, score_cutoff=WEAK, dtype=np.uint8,
                                workers=-1) if queries else []  # fmt: skip
         # letters speech recognition mixes up (الكول/الكور): a match on the "sound" scores a bit lower than an exact one
         phon = process.cdist([_sound(q) for q in queries], _sound_heads(idx, n), scorer=fuzz.ratio,
                              score_cutoff=STRONG, dtype=np.uint8, workers=-1) if queries else []  # fmt: skip
-        for row, prow, i in zip(scores, phon, starts, strict=True):
-            best = {}
+        found: dict[int, dict] = {}
+        for row, prow, (i, _q) in zip(scores, phon, qs, strict=True):
+            best = found.setdefault(i, {})
             for h in np.nonzero(row)[0]:
                 best[owners[h]] = max(best.get(owners[h], 0), int(row[h]))
             for h in np.nonzero(prow)[0]:
                 best[owners[h]] = max(best.get(owners[h], 0), int(prow[h]) - SOUND_PENALTY)
+        if n == 2 and idx.heads[1]:  # a name heard as two words ("اوج منتين") vs the one-word name
+            joined = [(i, bare[i] + bare[i + 1]) for i in starts]
+            rows = process.cdist([q for _i, q in joined], idx.heads[1], scorer=fuzz.ratio, score_cutoff=STRONG,
+                                 dtype=np.uint8, workers=-1) if joined else []  # fmt: skip
+            for row, (i, _q) in zip(rows, joined, strict=True):
+                best = found.setdefault(i, {})
+                for h in np.nonzero(row)[0]:
+                    pk = idx.owners[1][h]
+                    best[pk] = max(best.get(pk, 0), int(row[h]) - 2)
+        if n == 1:  # Arabic speech vs English-only names, by consonant skeleton
+            sk_heads, sk_owners = _skeleton_heads(idx)
+            sk = [(i, _skeleton_ar(v)) for i in starts for v in _variants(norm[i]) if not v.isascii()]
+            sk = [(i, q) for i, q in sk if len(q) >= SKELETON_MIN]
+            rows = process.cdist([q for _i, q in sk], sk_heads, scorer=fuzz.ratio, score_cutoff=SKELETON_CUTOFF,
+                                 dtype=np.uint8, workers=-1) if sk and sk_heads else []  # fmt: skip
+            for row, (i, _q) in zip(rows, sk, strict=True):
+                best = found.setdefault(i, {})
+                for h in np.nonzero(row)[0]:
+                    pk = sk_owners[h]
+                    best[pk] = max(best.get(pk, 0), int(row[h]) - SKELETON_PENALTY)
+        for i, best in found.items():
             if best:
                 windows[(i, n)] = sorted(((s, pk) for pk, s in best.items()), reverse=True)
 
@@ -304,11 +402,18 @@ def extract(org, transcript: str) -> list[Extracted]:
     by_drug: dict[int, Extracted] = {}
     for k, (i, n, hits) in enumerate(chosen):
         end = chosen[k + 1][0] if k + 1 < len(chosen) else len(norm)
+        if any(w in NEGATIONS for w in norm[max(0, i - 2) : i]):  # "بلاش البنادول": stopped, not prescribed
+            continue
+        if k + 1 < len(chosen) and any(w in CORRECTIONS for w in norm[i + n : min(end, i + n + 4)]):
+            continue  # "كونكور... لا قصدي كونكور بلس": only the corrected name counts
         j = i + n
         strength = None
         while j < end and (norm[j] in MODIFIERS or norm[j] in UNITS or (_is_number(norm[j]) and strength is None)):
             if _is_number(norm[j]):
-                if (j + 1 < end and norm[j + 1] in UNITS) or _number_in_names(norm[j], hits, names):
+                if j + 1 < end and norm[j + 1] in COUNTED:
+                    break  # "شراب 5 مل" is the dose, not the strength
+                big = float(norm[j].replace(",", ".")) >= 20  # "بروفين 250 معلقة": 250 is a strength, not a dose
+                if (j + 1 < end and norm[j + 1] in UNITS) or big or _number_in_names(norm[j], hits, names):
                     strength = norm[j]
                 else:
                     break
@@ -320,7 +425,7 @@ def extract(org, transcript: str) -> list[Extracted]:
             ins, dur = ins or b_ins, dur or b_dur
 
         said_en = {SPOKEN_EN.get(w, w) for w in norm[i:j]}  # "الكور" alone → ALKOR, not ALKOR PLUS
-        kinds = {TYPES[w] for w in norm[max(0, i - 1) : i] + norm[j : j + 1] if w in TYPES}  # "صابونه اي ون"
+        kinds = {TYPES[w] for w in norm[max(0, i - 2) : i] + norm[j : j + 3] if w in TYPES}  # "صابونه اي ون"
 
         def rank(sp, strength=strength, kinds=kinds, said_en=said_en):
             score, pk = sp

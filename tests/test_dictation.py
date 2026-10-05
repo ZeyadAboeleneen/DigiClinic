@@ -300,3 +300,42 @@ def test_misheard_letters_and_plain_variant_first(org):
     Drug.objects.create(organization=org, name="ALKOR 10 MG 14 F.C. TABS.", aliases_ar=["الكور"])
     [item] = extraction.extract(org, "وهكتب لك الكول 10 مليجرام ده تاخديه مرتين")  # ر heard as ل
     assert (item.candidates[0].drug.name, item.instructions) == ("ALKOR 10 MG 14 F.C. TABS.", "مرتين")
+
+
+@pytest.fixture
+def mini_catalog(org):
+    for name, alias in (
+        ("PANADOL 500 MG 24 TABS.", "بنادول"), ("CATAFLAM 50 MG 20 TABS.", "كتافلام"),
+        ("CONCOR 5 MG 30 TABS.", "كونكور"), ("CONCOR 10 MG 30 TABS.", "كونكور"),
+        ("AUGMENTIN 1 GM 14 TABS.", "اوجمنتين"), ("AUGMENTIN 457 MG/5 ML SUSP.", "اوجمنتين"),
+        ("AMOXICILLIN 500MG 12 CAPS.", ""), ("BRUFEN 400 MG 30 TABS.", "بروفين"),
+        ("GLUCOPHAGE 500 MG 50 TABS.", "جلوكوفاج"),
+    ):  # fmt: skip
+        Drug.objects.create(organization=org, name=name, aliases_ar=[alias] if alias else [])
+
+
+@pytest.mark.parametrize(
+    ("talk", "expected"),
+    [
+        ("بلاش البنادول خالص وخدي كتافلام 50 قرص كل 8 ساعات", [("CATAFLAM", "قرص كل 8 ساعات", "")]),
+        ("كونكور 5 لا قصدي كونكور 10 مرة الصبح", [("CONCOR 10", "مرة الصبح", "")]),
+        ("كونكور5 مرة الصبح", [("CONCOR 5", "مرة الصبح", "")]),
+        ("اوج منتين قرص كل 12 ساعة", [("AUGMENTIN", "قرص كل 12 ساعة", "")]),
+        ("خدي بالبنادول عند اللزوم", [("PANADOL", "عند اللزوم", "")]),
+        ("اموكسيسيلين كبسولة كل 8 ساعات لمدة اسبوع", [("AMOXICILLIN", "كبسولة كل 8 ساعات", "لمدة أسبوع")]),
+        ("اوجمنتين شراب 5 مل كل 12 ساعه", [("AUGMENTIN 457", "5 مل كل 12 ساعة", "")]),
+        ("جلوكوفاج 500 قرص بعد الاكل بنص ساعه باستمرار", [("GLUCOPHAGE", "قرص بعد الأكل بنص ساعة", "باستمرار")]),
+        ("بروفين ميتين وخمسين معلقة كل 8 ساعات", [("BRUFEN", "معلقة كل 8 ساعات", "")]),
+        ("انا صحيت النهارده تعبان وبطني بتوجعني من امبارح ومش قادر انام", []),
+        ("ضغطك كويس والسكر كمان تمام الحمد لله نكمل على نفس العلاج", []),
+    ],
+)  # fmt: skip
+def test_future_phrasings(org, mini_catalog, talk, expected):
+    from apps.prescriptions import extraction
+
+    got = [([f"{c.drug.name} {c.drug.generic_name}".upper() for c in e.candidates], e.instructions, e.duration)
+           for e in extraction.extract(org, talk)]  # fmt: skip
+    assert len(got) == len(expected), got
+    for (names, ins, dur), (prefix, e_ins, e_dur) in zip(got, expected, strict=True):
+        # a brand whose generic is the spoken name (Flumox ← "اموكسيسيلين") is a right answer too
+        assert (names[0].startswith(prefix) or prefix in names[0]) and (ins, dur) == (e_ins, e_dur), got
