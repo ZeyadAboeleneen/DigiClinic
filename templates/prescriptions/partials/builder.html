@@ -96,19 +96,20 @@
   {# --- lines --- #}
   <div class="card divide-y divide-stone-100">
     {% for it in items %}
-    <div class="grid gap-2 p-3 sm:grid-cols-[1.4fr_.6fr_2fr_1fr_auto] sm:items-center {% if it.needs_review %}bg-amber-50{% endif %}" data-item="{{ it.pk }}">
+    {# Two lines that always fit the pane: name + actions, then form / dose / duration (no sideways scrolling). #}
+    <div class="grid grid-cols-[minmax(0,5.5rem)_minmax(0,2fr)_minmax(0,1fr)] items-center gap-1.5 p-3 {% if it.needs_review %}bg-amber-50{% endif %}" data-item="{{ it.pk }}">
       {% url 'prescriptions:item_update' it.pk as cell_url %}
-      <input class="rx-cell rounded-md border border-stone-200 px-2 py-1 text-sm font-semibold" dir="ltr" value="{{ it.drug_name }}" name="value"
+      <input class="rx-cell col-span-2 row-start-1 w-full min-w-0 rounded-md border border-stone-200 px-2 py-1 text-sm font-semibold" dir="ltr" value="{{ it.drug_name }}" name="value"
              hx-post="{{ cell_url }}" hx-vals='{"field": "drug_name"}' hx-trigger="input changed delay:600ms, change" hx-target="#cell-{{ it.pk }}" aria-label="{% translate 'الدوا' %}">
-      <input class="rx-cell rounded-md border border-stone-200 px-2 py-1 text-sm" value="{{ it.form }}" name="value" list="rx-forms"
+      <input class="rx-cell w-full min-w-0 rounded-md border border-stone-200 px-2 py-1 text-sm" placeholder="{% translate 'الشكل' %}" value="{{ it.form }}" name="value" list="rx-forms"
              hx-post="{{ cell_url }}" hx-vals='{"field": "form"}' hx-trigger="input changed delay:600ms, change" hx-target="#cell-{{ it.pk }}" aria-label="{% translate 'الشكل' %}">
-      <input class="rx-cell rx-instr rounded-md border border-stone-200 px-2 py-1 text-sm" dir="auto" value="{{ it.instructions }}" name="value"
+      <input class="rx-cell rx-instr w-full min-w-0 rounded-md border border-stone-200 px-2 py-1 text-sm" dir="auto" value="{{ it.instructions }}" name="value"
              placeholder="{% translate 'الجرعة' %}" {% if focus_last and forloop.last %}autofocus{% endif %}
              hx-post="{{ cell_url }}" hx-vals='{"field": "instructions"}' hx-trigger="input changed delay:600ms, change" hx-target="#cell-{{ it.pk }}" aria-label="{% translate 'الجرعة' %}">
-      <input class="rx-cell rx-duration rounded-md border border-stone-200 px-2 py-1 text-sm" dir="auto" value="{{ it.duration }}" name="value"
+      <input class="rx-cell rx-duration w-full min-w-0 rounded-md border border-stone-200 px-2 py-1 text-sm" dir="auto" value="{{ it.duration }}" name="value"
              placeholder="{% translate 'المدة' %}"
              hx-post="{{ cell_url }}" hx-vals='{"field": "duration"}' hx-trigger="input changed delay:600ms, change" hx-target="#cell-{{ it.pk }}" aria-label="{% translate 'المدة' %}">
-      <div class="flex items-center gap-1 text-xs">
+      <div class="col-start-3 row-start-1 flex items-center justify-end gap-0.5 text-xs">
         <span id="cell-{{ it.pk }}" class="w-4"></span>
         {% if it.needs_review %}<button class="btn-ghost px-1 text-amber-700" hx-post="{% url 'prescriptions:item_action' it.pk 'confirm' %}" hx-target="#rx-builder" hx-swap="outerHTML">✓ {% translate "تأكيد" %}</button>{% endif %}
         {% if not it.drug_id and can.drug_manage %}<button class="btn-ghost px-1" title="{% translate 'ضيفه للكتالوج' %}" hx-post="{% url 'prescriptions:item_to_catalog' it.pk %}" hx-include="#rx-category" hx-target="#rx-builder" hx-swap="outerHTML">＋📚</button>{% endif %}
