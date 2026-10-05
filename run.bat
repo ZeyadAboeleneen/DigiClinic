@@ -5,6 +5,8 @@ set TAILWINDCSS_VERSION=v4.3.3
 set PYTHONUTF8=1
 set UV_NATIVE_TLS=1
 set "UV=python -m uv"
+REM the default "python" on this PC may be an older one without uv; prefer a Python that has it
+if exist "C:\Python313\python.exe" "C:\Python313\python.exe" -m uv --version >nul 2>nul && set "UV="C:\Python313\python.exe" -m uv"
 where uv >nul 2>nul && set "UV=uv"
 echo [1/6] Installing packages...
 %UV% sync --quiet || goto :error
