@@ -288,3 +288,6 @@ def test_english_names_said_in_arabic(org):
     [item] = extraction.extract(org, "استخدمي صابونه اي ون مرتين في اليوم")
     assert (item.candidates[0].drug.name, item.instructions) == ("A.ONE SOAP 100 GM", "مرتين في اليوم")
     assert extraction.extract(org, "دي او ال كده تمام") == []
+    Drug.objects.create(organization=org, name="A1 CREAM 50 GM")
+    [item] = extraction.extract(org, "وكريم اي 1 بالليل")  # the browser often writes "ون" as the digit
+    assert item.candidates[0].drug.name == "A1 CREAM 50 GM"

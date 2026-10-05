@@ -66,6 +66,7 @@ PATTERNS = [
     ("freq", re.compile(r"كل\s*\d+\s*(?:ساعات|ساعه|ايام|يوم)")),
     ("freq", re.compile(r"(?:مره|مرتين|\d+\s*مرات)?\s*كل يوم(?:\s*بالليل|\s*الصبح)?|يوم بعد يوم|يوم اه ويوم لا")),
     ("freq", re.compile(r"(?:مره|مرتين|\d+\s*مرات|\d+\s*مره)\s*(?:(?:واحده|1)\s*)?(?:يوميا|في اليوم|فاليوم|في الاسبوع|اسبوعيا|بالليل|الصبح)?")),
+    ("freq", re.compile(r"طول اليوم|بعد (?:الشاور|الحمام|الاستحمام|الدش)")),
     ("freq", re.compile(r"عند اللزوم|عند الحاجه|قبل النوم|الصبح وبالليل|الصبح والليل")),
     # timing
     ("timing", re.compile(r"(?:قبل|بعد|مع)\s*(?:الاكل|الفطار|الفطور|الغدا|الغداء|العشا|العشاء|الوجبات|الاكل)|علي الريق|على الريق")),
@@ -96,6 +97,20 @@ SPOKEN_EN = {normalize(k): v for k, v in {
     "بيبي": "baby", "جونيور": "junior", "ميني": "mini", "دوبل": "double", "سوبر": "super", "نايت": "night",
     "داي": "day", "كولد": "cold", "فلو": "flu", "كير": "care", "هير": "hair", "سكين": "skin",
 }.items()}  # fmt: skip
+DIGIT_WORDS = {"1": "one", "2": "two", "3": "three", "4": "four", "5": "five"}
+
+
+def _glue(words: list[str]) -> str:
+    """["a", "1", "d"] → "a1 d": a letter followed by a number is written together in names (A1 CREAM)."""
+    out: list[str] = []
+    for w in words:
+        if out and w.isdigit() and out[-1].isalpha() and len(out[-1]) == 1:
+            out[-1] += w
+        else:
+            out.append(w)
+    return " ".join(out)
+
+
 # Product type words → the English word in catalog names; said next to a name they pick the right product.
 TYPES = {normalize(k): v for k, v in {
     "صابونه": "soap", "صابون": "soap", "كريم": "cream", "شامبو": "shampoo", "لوشن": "lotion", "جل": "gel",
@@ -221,23 +236,29 @@ def extract(org, transcript: str) -> list[Extracted]:
                     best[pk] = max(best.get(pk, 0), int(row[h]))
                 windows[(i, n)] = sorted(((s, pk) for pk, s in best.items()), reverse=True)
 
-        # the same window heard as spoken English ("اي ون" → "a one"), when every word is a known spoken word
-        latin = {}
+        # the same window heard as spoken English ("اي ون" / "اي 1" → "a one" / "a1"), when every word is a known
+        # spoken word; letters alone ("دي او") are too common in speech to count
+        latin = []  # (start, query)
         for i in range(len(norm) - n + 1):
             ws = norm[i : i + n]
-            if all(w in SPOKEN_EN or _is_number(w) for w in ws) and not _is_number(ws[0]):
-                q = " ".join(SPOKEN_EN.get(w, w) for w in ws)
-                if any(len(w) >= 3 for w in q.split()):  # letters alone ("دي او") are too common in speech
-                    latin[i] = q
-        if latin:
-            scores = process.cdist(list(latin.values()), idx.heads[n], scorer=fuzz.ratio, score_cutoff=STRONG,
-                                   dtype=np.uint8, workers=-1)  # fmt: skip
-            for row, i in zip(scores, latin, strict=True):
-                best = dict((pk, s) for s, pk in windows.get((i, n), []))
-                for h in np.nonzero(row)[0]:
-                    best[owners[h]] = max(best.get(owners[h], 0), int(row[h]))
-                if best:
-                    windows[(i, n)] = sorted(((s, pk) for pk, s in best.items()), reverse=True)
+            if not all(w in SPOKEN_EN or _is_number(w) for w in ws) or _is_number(ws[0]):
+                continue
+            words = [SPOKEN_EN.get(w, w) for w in ws]
+            for q in {" ".join(DIGIT_WORDS.get(w, w) for w in words), _glue(words)}:
+                if any(len(w) >= 3 or (re.search(r"\d", w) and re.search(r"[a-z]", w)) for w in q.split()):
+                    latin.append((i, q))
+        for i, q in latin:
+            m = len(q.split())
+            if not idx.heads.get(m):
+                continue
+            row = process.cdist([q], idx.heads[m], scorer=fuzz.ratio, score_cutoff=STRONG, dtype=np.uint8,
+                                workers=-1)[0]  # fmt: skip
+            best = dict((pk, sc) for sc, pk in windows.get((i, n), []))
+            for h in np.nonzero(row)[0]:
+                pk = idx.owners[m][h]
+                best[pk] = max(best.get(pk, 0), int(row[h]))
+            if best:
+                windows[(i, n)] = sorted(((sc, pk) for pk, sc in best.items()), reverse=True)
 
     # 2) choose non-overlapping mentions: strongest first, longer spoken names win ties; weak ones need a regimen
     chosen = []
