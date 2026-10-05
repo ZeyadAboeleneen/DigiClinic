@@ -25,6 +25,7 @@ _NUMBER_WORDS = {
     "تلاتين": "30", "ثلاثين": "30", "اربعين": "40", "خمسين": "50", "ميه": "100", "مية": "100", "ميتين": "200",
     "اربعميه": "400", "خمسميه": "500", "الف": "1000", "نص": "½", "نصف": "½", "ربع": "¼",
 }  # fmt: skip
+_SPLIT_PUNCT = re.compile(r"(?<=[a-z])[.\-](?=[a-z])")
 _COMMANDS = re.compile(r"\s*(?:سطر جديد|سطر جديده)\s*")
 _SPLIT = re.compile(r"[،,\n؛;]+")
 _ARABIC_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
@@ -120,7 +121,8 @@ def _index(org) -> _Index:
     )
     for pk, name, generic, aliases, used in rows:
         usage[pk], name_len[pk] = used, len(name)
-        for full in {normalize(name), normalize(generic), *(normalize(a) for a in aliases or [])}:
+        spoken = _SPLIT_PUNCT.sub(" ", normalize(name))  # "a.one soap" is said "a one soap"
+        for full in {normalize(name), spoken, normalize(generic), *(normalize(a) for a in aliases or [])}:
             words = full.split()
             for n in range(1, min(MAX_PREFIX_WORDS, len(words)) + 1):
                 heads[n].append(" ".join(words[:n]))

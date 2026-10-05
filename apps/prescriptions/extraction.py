@@ -85,6 +85,24 @@ PRETTY = [
 ]  # fmt: skip
 
 _PUNCT = re.compile(r"[^\w½¼\s]", re.UNICODE)
+
+# English product names said in Arabic ("صابونه اي ون" = A.ONE SOAP): letters, number words and common name words.
+SPOKEN_EN = {normalize(k): v for k, v in {
+    "اي": "a", "ايه": "a", "بي": "b", "سي": "c", "دي": "d", "اف": "f", "جي": "g", "اتش": "h", "جاي": "j",
+    "كي": "k", "ال": "l", "ام": "m", "ان": "n", "او": "o", "كيو": "q", "ار": "r", "اس": "s", "تي": "t", "يو": "u",
+    "دبليو": "w", "اكس": "x", "واي": "y", "زد": "z", "زي": "z",
+    "ون": "one", "وان": "one", "تو": "two", "تري": "three", "ثري": "three", "فور": "four", "فايف": "five",
+    "بلس": "plus", "اكسترا": "extra", "فورت": "forte", "فورتي": "forte", "ماكس": "max", "كيدز": "kids",
+    "بيبي": "baby", "جونيور": "junior", "ميني": "mini", "دوبل": "double", "سوبر": "super", "نايت": "night",
+    "داي": "day", "كولد": "cold", "فلو": "flu", "كير": "care", "هير": "hair", "سكين": "skin",
+}.items()}  # fmt: skip
+# Product type words → the English word in catalog names; said next to a name they pick the right product.
+TYPES = {normalize(k): v for k, v in {
+    "صابونه": "soap", "صابون": "soap", "كريم": "cream", "شامبو": "shampoo", "لوشن": "lotion", "جل": "gel",
+    "مرهم": "oint", "شراب": "syrup", "سيرب": "syrup", "نقط": "drops", "نقطه": "drops", "بخاخ": "spray",
+    "لبوس": "supp", "حقن": "amp", "حقنه": "amp", "فوار": "eff", "بودره": "powder", "غسول": "wash", "اقراص": "tab",
+    "كبسول": "cap", "كبسولات": "cap", "لبوسه": "supp", "معجون": "paste", "سبراي": "spray",
+}.items()}  # fmt: skip
 # Name modifiers and strength units never start a drug name ("اكسترا" alone is not a drug; "جرام" is a strength).
 MODIFIERS = {normalize(w) for w in "اكسترا بلس فورت فورتي ريتارد اس ار اكس ال".split()}
 UNITS = {normalize(w) for w in "جرام جم جرامات مجم ملجم مللي ملي مل مليجرام ميكرو وحده وحدات".split()}
@@ -173,7 +191,7 @@ def extract(org, transcript: str) -> list[Extracted]:
     tokens = raw.split()
     norm = [normalize(t) for t in tokens]
     bare = [_bare(t) for t in norm]  # for matching names only (regimen patterns use `norm`)
-    blocked = STOPWORDS | MODIFIERS | UNITS
+    blocked = STOPWORDS | MODIFIERS | UNITS | set(TYPES)
     if not norm:
         return []
     idx = _index(org)
@@ -188,12 +206,12 @@ def extract(org, transcript: str) -> list[Extracted]:
             and not any(_is_number(t) or t in UNITS for t in norm[i + 1 : i + n])
             and len("".join(bare[i : i + n])) >= MIN_CHARS
         ]  # fmt: skip
-        if not starts or not idx.heads[n]:
+        if not idx.heads[n]:
             continue
+        owners = idx.owners[n]
         queries = [" ".join(bare[i : i + n]) for i in starts]
         scores = process.cdist(queries, idx.heads[n], scorer=fuzz.ratio, score_cutoff=WEAK, dtype=np.uint8,
-                               workers=-1)  # fmt: skip
-        owners = idx.owners[n]
+                               workers=-1) if queries else []  # fmt: skip
         for row, i in zip(scores, starts, strict=True):
             hits = np.nonzero(row)[0]
             if len(hits):
@@ -202,6 +220,24 @@ def extract(org, transcript: str) -> list[Extracted]:
                     pk = owners[h]
                     best[pk] = max(best.get(pk, 0), int(row[h]))
                 windows[(i, n)] = sorted(((s, pk) for pk, s in best.items()), reverse=True)
+
+        # the same window heard as spoken English ("اي ون" → "a one"), when every word is a known spoken word
+        latin = {}
+        for i in range(len(norm) - n + 1):
+            ws = norm[i : i + n]
+            if all(w in SPOKEN_EN or _is_number(w) for w in ws) and not _is_number(ws[0]):
+                q = " ".join(SPOKEN_EN.get(w, w) for w in ws)
+                if any(len(w) >= 3 for w in q.split()):  # letters alone ("دي او") are too common in speech
+                    latin[i] = q
+        if latin:
+            scores = process.cdist(list(latin.values()), idx.heads[n], scorer=fuzz.ratio, score_cutoff=STRONG,
+                                   dtype=np.uint8, workers=-1)  # fmt: skip
+            for row, i in zip(scores, latin, strict=True):
+                best = dict((pk, s) for s, pk in windows.get((i, n), []))
+                for h in np.nonzero(row)[0]:
+                    best[owners[h]] = max(best.get(owners[h], 0), int(row[h]))
+                if best:
+                    windows[(i, n)] = sorted(((s, pk) for pk, s in best.items()), reverse=True)
 
     # 2) choose non-overlapping mentions: strongest first, longer spoken names win ties; weak ones need a regimen
     chosen = []
@@ -242,10 +278,13 @@ def extract(org, transcript: str) -> list[Extracted]:
             b_ins, b_dur = regimen(norm[max(0, i - 12) : i])
             ins, dur = ins or b_ins, dur or b_dur
 
-        def rank(sp, strength=strength):
+        kinds = {TYPES[w] for w in norm[max(0, i - 1) : i] + norm[j : j + 1] if w in TYPES}  # "صابونه اي ون"
+
+        def rank(sp, strength=strength, kinds=kinds):
             score, pk = sp
-            has = bool(strength) and strength in re.findall(r"\d+(?:\.\d+)?", names.get(pk, ""))
-            return (-score, not has, -idx.usage[pk], idx.name_len[pk])
+            name = names.get(pk, "").lower()
+            has = bool(strength) and strength in re.findall(r"\d+(?:\.\d+)?", name)
+            return (-score, not any(k in name for k in kinds), not has, -idx.usage[pk], idx.name_len[pk])
 
         ranked = sorted(hits, key=rank)[:TOP_N]
         spoken = " ".join(tokens[i:j])

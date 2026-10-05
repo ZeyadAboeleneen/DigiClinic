@@ -278,3 +278,13 @@ def test_real_clinic_phrasings(org, talk, drug, instructions, duration):
     [item] = extraction.extract(org, talk)  # "اللي هو" must not match VALLEY YEAST
     top = item.candidates[0].drug.name.upper()
     assert (top.split()[0], item.instructions, item.duration) == (drug.split()[0], instructions, duration)
+
+
+def test_english_names_said_in_arabic(org):
+    from apps.prescriptions import extraction
+
+    Drug.objects.create(organization=org, name="A.ONE SOAP 100 GM", aliases_ar=["ا.اوني سواب"])
+    Drug.objects.create(organization=org, name="A.ONE CREAM 50 GM")
+    [item] = extraction.extract(org, "استخدمي صابونه اي ون مرتين في اليوم")
+    assert (item.candidates[0].drug.name, item.instructions) == ("A.ONE SOAP 100 GM", "مرتين في اليوم")
+    assert extraction.extract(org, "دي او ال كده تمام") == []
