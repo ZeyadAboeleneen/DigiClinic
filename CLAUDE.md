@@ -367,3 +367,9 @@ gotchas and conventions introduced in that phase.
 - Diagnosis autocomplete = the doctor's own diagnoses, most used first (`diagnosis_suggestions`), free text kept.
 - Tablet: `pointer-coarse:` variants enlarge chips/checkboxes; below `lg` the panes stack and the action bar gets
   "الكشف / الروشتة" jump links.
+- Look (redesign 2026-10-06): shared classes in `static/src/app.css` — `ws-panel` (the two white panes + snapshot),
+  `ws-title` (section title with a brand bar), `ws-label`, `ws-section` (hairline-separated block), `chip`
+  (a Tailwind `@utility`, so other classes can `@apply` it) / `chip-soft`, `cat-tile` (drug categories as an equal
+  grid of big tiles), `quiet-input` (prescription cells that look like text until hovered/focused). The voice mic sits
+  **inside** fields: wrap an input in `.dictate-inline` or a textarea in `.dictate-corner`. Below `lg` the action bar's
+  "الكشف | الروشتة" switch shows one pane at a time (`max-lg:hidden`); the drawer has its own tabs (`[data-drawer]`).

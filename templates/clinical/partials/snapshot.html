@@ -2,7 +2,7 @@
 {% comment %}Patient snapshot: last visit, last prescription, latest readings and what changed — readable in ~5 s.
 Only recorded values are shown; a missing value simply leaves its item out.{% endcomment %}
 {% if prev or prev_rx or latest_vitals or changes %}
-<section id="snapshot" class="mb-3 grid gap-x-6 gap-y-2 rounded-lg bg-stone-50 px-4 py-3 text-sm lg:grid-cols-[1.2fr_1.4fr_1fr]">
+<section id="snapshot" class="ws-panel mb-4 grid gap-x-6 gap-y-3 py-3 text-sm sm:py-3 lg:grid-cols-[1.2fr_1.4fr_1fr] lg:divide-x lg:divide-x-reverse lg:divide-stone-100 [&>div]:lg:px-4 [&>div:first-child]:lg:ps-0">
   <div class="min-w-0">
     <p class="text-xs font-semibold text-stone-500">{% translate "الزيارة اللي فاتت" %}{% if prev %} · <span dir="ltr">{{ prev.finished_at|date:"j/n/Y" }}</span>{% endif %}</p>
     {% if prev %}

@@ -1,8 +1,9 @@
 {% load i18n %}
 {% comment %}Sticky patient header (workspace): one compact line that stays on screen. Allergies come first and in red —
 safety information is never collapsed or hidden.{% endcomment %}
-<header id="patient-header" class="sticky top-[53px] z-20 -mx-4 mb-3 border-b border-stone-200 bg-white/95 px-4 py-2 backdrop-blur lg:top-0 lg:-mx-8 lg:px-8">
+<header id="patient-header" class="sticky top-[53px] z-20 -mx-4 -mt-2 mb-4 border-b border-stone-200 bg-white/95 px-4 py-2.5 shadow-[0_4px_16px_-12px_rgba(0,0,0,.2)] backdrop-blur lg:top-0 lg:-mx-8 lg:px-8">
   <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+    <span class="grid size-9 shrink-0 place-items-center rounded-full bg-brand-soft text-sm font-bold text-brand" aria-hidden="true">{{ patient.full_name|slice:":1" }}</span>
     <h1 class="text-lg font-bold leading-tight">{{ patient.full_name }}</h1>
     <span class="text-sm text-stone-500">
       {% if age is not None %}{% blocktranslate with a=age %}{{ a }} سنة{% endblocktranslate %}{% if patient.dob_is_estimated %} ({% translate "تقريبي" %}){% endif %} · {% endif %}{{ patient.get_gender_display }}

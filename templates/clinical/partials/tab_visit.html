@@ -1,10 +1,10 @@
 {% load i18n %}
 {% url 'clinical:visit_field' visit.pk as field_url %}
 <div class="space-y-3" id="visit-form" data-url="{{ field_url }}">
-  <div class="flex items-center justify-between text-xs">
-    <span class="font-semibold text-stone-500">{% translate "الكشف" %} · {% if visit.status == "finished" %}{% translate "الكشف خلص — التعديلات بتتسجل في السجل" %}{% else %}{% translate "بيتحفظ تلقائي" %}{% endif %}</span>
-    <span id="save-status" class="text-stone-400"></span>
-  </div>
+  <h2 class="ws-title">{% translate "الكشف" %}
+    <span class="text-xs font-normal text-stone-400">{% if visit.status == "finished" %}{% translate "خلص — التعديلات بتتسجل في السجل" %}{% else %}{% translate "بيتحفظ تلقائي" %}{% endif %}</span>
+    <span id="save-status" class="ms-auto text-xs font-normal text-stone-400"></span>
+  </h2>
   {% with editable=can.clinical_edit %}
   {% include "clinical/partials/visit_text.html" with name="chief_complaint" label=_("الشكوى") value=visit.chief_complaint rows=2 chips=phrases.chief_complaint %}
   <details class="group" {% if visit.history %}open{% endif %}>
@@ -40,11 +40,11 @@
   {% endif %}
 
   {# Follow-up: one tap; the number of days stays editable. Reception books it from "إعادات محتاجة حجز". #}
-  <div id="followup" class="rounded-lg bg-stone-50 px-3 py-2">
+  <div id="followup" class="ws-section">
     <div class="flex flex-wrap items-center gap-2">
-      <label for="f-followup" class="text-xs font-semibold text-stone-600">{% translate "الإعادة" %}</label>
+      <label for="f-followup" class="ws-label me-1">{% translate "الإعادة" %}</label>
       {% for days, label in followup_choices %}
-      <button type="button" class="fu-chip rounded-full border px-3 py-1 text-xs pointer-coarse:px-4 pointer-coarse:py-2 {% if visit.followup_after_days == days %}border-brand bg-brand text-white{% else %}border-stone-300 bg-white{% endif %}"
+      <button type="button" class="fu-chip chip {% if visit.followup_after_days == days %}border-brand bg-brand text-white{% endif %}"
               data-days="{{ days }}" {% if not editable %}disabled{% endif %}>{{ label }}</button>
       {% endfor %}
       <span class="flex items-center gap-1 text-xs text-stone-500">

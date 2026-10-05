@@ -31,6 +31,10 @@
   @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
+@utility chip {
+  @apply inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs text-stone-700 transition hover:border-stone-300 hover:bg-stone-50 disabled:opacity-50 pointer-coarse:px-4 pointer-coarse:py-2 pointer-coarse:text-sm;
+}
+
 @layer components {
   .btn-primary { @apply btn bg-brand text-white hover:bg-brand-dark; }
   .btn-secondary { @apply btn border border-stone-300 bg-white text-ink hover:bg-stone-50; }
@@ -49,6 +53,27 @@
   .form-field .help { @apply text-xs text-stone-500; }
   .form-field .errorlist { @apply text-xs font-semibold text-red-700; }
   .form-field.has-error input, .form-field.has-error select, .form-field.has-error textarea { @apply border-red-400; }
+
+  /* --- doctor workspace --- */
+  .ws-panel { @apply rounded-2xl border border-stone-200/80 bg-white p-4 sm:p-5; }
+  .ws-title { @apply mb-3 flex items-center gap-2 text-base font-bold text-ink; }
+  .ws-title::before { content: ""; @apply h-4 w-1 rounded-full bg-brand; }
+  .ws-label { @apply text-xs font-semibold text-stone-500; }
+  .ws-section { @apply border-t border-stone-100 pt-4; }
+  .chip-soft { @apply chip border-transparent bg-stone-100 hover:bg-stone-200; }
+  /* drug categories: big, equal tiles the doctor can hit without aiming */
+  .cat-tile { @apply flex min-h-10 items-center justify-center rounded-lg border border-stone-200 bg-white px-2 py-1.5 text-center text-[13px] leading-tight font-semibold text-stone-700 transition hover:border-brand/40 hover:bg-brand-soft pointer-coarse:min-h-12 pointer-coarse:text-sm; }
+  /* prescription cells: look like text until hovered / focused */
+  .quiet-input { @apply w-full min-w-0 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm transition hover:border-stone-200 focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/15 focus:outline-none pointer-coarse:border-stone-200 pointer-coarse:py-2; }
+
+  /* voice mic inside the field (not under it, not over the text) */
+  .dictate-inline, .dictate-corner { position: relative; }
+  .dictate-inline > input { padding-inline-end: 4.5rem !important; }
+  .dictate-inline > .dictation-bar { position: absolute; inset-inline-end: .4rem; top: 50%; transform: translateY(-50%); margin-top: 0 !important; }
+  .dictate-inline .dictation-interim { display: none; }
+  .dictate-corner > textarea { padding-bottom: 2.1rem !important; }
+  .dictate-corner > .dictation-bar { position: absolute; inset-inline-end: .4rem; bottom: .45rem; margin-top: 0 !important; max-width: calc(100% - .8rem); }
+  .dictate-corner .dictation-interim { @apply truncate rounded bg-white px-1; }
 
   .nav-link { @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-stone-600 hover:bg-sand hover:text-ink; }
   .nav-link.active { @apply bg-brand-soft text-brand; }

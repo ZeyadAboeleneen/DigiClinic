@@ -1,11 +1,14 @@
 {% load i18n %}
 <div id="rx-builder" class="space-y-4" data-status="{{ rx.status }}" data-items="{{ items|length }}" data-pdf="{% url 'prescriptions:pdf' rx.pk %}?mode=print">
-  <div class="flex flex-wrap items-center gap-2">
-    <h2 class="font-bold">{% translate "الروشتة" %}</h2>
+  <div class="ws-title mb-0 flex-wrap">
+    <h2>{% translate "الروشتة" %}</h2>
     {% if rx.display_number %}<span class="badge bg-stone-100 font-mono text-stone-700" dir="ltr">{{ rx.display_number }}</span>{% endif %}
     <span class="badge {% if rx.status == 'final' %}bg-green-50 text-green-700{% elif rx.status == 'voided' %}bg-red-50 text-red-700{% else %}bg-amber-50 text-amber-700{% endif %}">{{ rx.get_status_display }}</span>
-    {% if rx.revision_of_id and rx.is_editable %}<span class="text-xs text-stone-500">{% blocktranslate with n=rx.revision %}نسخة معدلة R{{ n }}{% endblocktranslate %}</span>{% endif %}
-    {% for r in revisions %}<a href="{% url 'prescriptions:pdf' r.pk %}" target="_blank" class="text-xs text-stone-500 underline" dir="ltr">{{ r }}</a>{% endfor %}
+    {% if rx.revision_of_id and rx.is_editable %}<span class="text-xs font-normal text-stone-500">{% blocktranslate with n=rx.revision %}نسخة معدلة R{{ n }}{% endblocktranslate %}</span>{% endif %}
+    {% for r in revisions %}<a href="{% url 'prescriptions:pdf' r.pk %}" target="_blank" class="text-xs font-normal text-stone-500 underline" dir="ltr">{{ r }}</a>{% endfor %}
+    {% if rx.is_editable and has_previous and items %}
+    <button class="ms-auto text-xs font-semibold text-brand hover:underline" hx-post="{% url 'prescriptions:action' rx.pk 'repeat' %}" hx-target="#rx-builder" hx-swap="outerHTML">↻ {% translate "كرر آخر روشتة" %}</button>
+    {% endif %}
   </div>
   {% if error %}<div class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{{ error }}</div>{% endif %}
   {% if notice %}<div class="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm font-semibold text-green-700">{{ notice }}</div>{% endif %}
@@ -13,17 +16,57 @@
   {% if rx.is_editable %}
   {% if has_previous and not items %}
   {# Repeat visit, empty prescription: the fastest path is the last one, then edit. #}
-  <button class="btn-primary w-full justify-center py-2.5" hx-post="{% url 'prescriptions:action' rx.pk 'repeat' %}" hx-target="#rx-builder" hx-swap="outerHTML">↻ {% translate "كرر آخر روشتة" %}</button>
+  <button class="btn-primary w-full py-3 text-base" hx-post="{% url 'prescriptions:action' rx.pk 'repeat' %}" hx-target="#rx-builder" hx-swap="outerHTML">↻ {% translate "كرر آخر روشتة" %}</button>
   {% endif %}
 
-  {% if recent or favorites %}
+  {# --- categories: big equal tiles (the doctor's specialty list, in order); the choice sticks (rx_js.html) --- #}
+  {% if categories %}
+  <div>
+    <div class="mb-1.5 flex items-center gap-2">
+      <span class="ws-label">{% translate "التصنيفات" %}</span>
+      {% if can.drug_manage %}<a href="{% url 'prescriptions:categories' %}" class="ms-auto text-xs text-stone-400 hover:text-brand" title="{% translate 'تعديل التصنيفات' %}">⚙ {% translate "تعديل" %}</a>{% endif %}
+    </div>
+    <div id="rx-cats" class="grid grid-cols-2 gap-1.5 sm:grid-cols-3 2xl:grid-cols-4" data-doctor="{{ rx.doctor_id }}"
+         data-search-url="{% url 'prescriptions:drug_search' rx.pk %}">
+      <button type="button" class="rx-cat cat-tile" data-cat="">{% translate "الكل" %}</button>
+      {% for dc in categories %}
+      <button type="button" class="rx-cat cat-tile" data-cat="{{ dc.category_id }}" dir="ltr" title="{{ dc.category.name }}">{{ dc.category.name }}</button>
+      {% endfor %}
+    </div>
+  </div>
+  {% elif can.drug_manage %}
+  <p class="text-xs text-stone-500">{% translate "اختار تخصصك مرة واحدة عشان تظهر تصنيفات الأدوية هنا:" %} <a href="{% url 'prescriptions:categories' %}" class="font-semibold text-brand">{% translate "تصنيفات الأدوية" %}</a></p>
+  {% endif %}
+
+  {# --- search / add --- #}
+  <form class="flex gap-2" hx-post="{% url 'prescriptions:item_add' rx.pk %}" hx-target="#rx-builder" hx-swap="outerHTML">
+    <input type="hidden" id="rx-category" name="category" value="">
+    <div class="dictate-inline relative flex-1">
+      <input id="rx-search" name="drug_name" autocomplete="off" dir="auto"
+             data-dictate="rx" data-dictate-url="{% url 'prescriptions:dictate' rx.pk %}" data-dictate-target="#rx-dictation" placeholder="{% translate 'ابحث أو اكتب اسم الدوا…  ( / )' %}"
+             class="w-full rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm shadow-sm focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
+             hx-get="{% url 'prescriptions:drug_search' rx.pk %}" hx-trigger="input changed delay:150ms" hx-target="#drug-results"
+             hx-swap="innerHTML" {# explicit: the enclosing form's outerHTML swap must not be inherited #}
+             hx-include="#rx-category"
+             onkeydown="const first = document.querySelector('#drug-results button');
+                        if (event.key === 'ArrowDown' && first) { first.focus(); event.preventDefault(); }
+                        if (event.key === 'Enter' && first) { first.click(); event.preventDefault(); }">
+      <div id="drug-results" class="absolute inset-x-0 top-full z-20 mt-1"></div>
+    </div>
+    {# type=button: Enter in the search box must not "submit" through this button (that would force free text). #}
+    <button type="button" class="btn-secondary whitespace-nowrap rounded-xl" title="{% translate 'إضافة النص زي ما هو (دوا مش في الكتالوج)' %}"
+            hx-post="{% url 'prescriptions:item_add' rx.pk %}" hx-include="#rx-search, #rx-category" hx-vals='{"free": "1"}'
+            hx-target="#rx-builder" hx-swap="outerHTML">+ {% translate "إضافة" %}</button>
+  </form>
+
+  {% if recent or favorites or templates %}
   {# One tap adds the drug the way it was given before (patient's line, else the doctor's own usual dose). #}
-  <div class="space-y-1.5 text-xs" id="rx-quick">
+  <div class="space-y-2 text-xs" id="rx-quick">
     {% if recent %}
-    <div class="flex flex-wrap items-center gap-1">
-      <span class="w-24 shrink-0 font-semibold text-stone-500">{% translate "أدوية المريض" %}</span>
+    <div class="flex flex-wrap items-center gap-1.5">
+      <span class="ws-label w-24 shrink-0">{% translate "أدوية المريض" %}</span>
       {% for it in recent %}
-      <button type="button" class="rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-sky-900 hover:bg-sky-100 pointer-coarse:px-3 pointer-coarse:py-2" dir="ltr"
+      <button type="button" class="chip border-sky-200 bg-sky-50 text-sky-900 hover:bg-sky-100" dir="ltr"
               title="{{ it.instructions }} {{ it.duration }}"
               hx-post="{% url 'prescriptions:item_add' rx.pk %}" hx-target="#rx-builder" hx-swap="outerHTML"
               hx-vals='{"drug": "{% if it.drug_id %}{{ it.drug_id }}{% endif %}", "drug_name": "{{ it.drug_name|escapejs }}", "instructions": "{{ it.instructions|escapejs }}", "duration": "{{ it.duration|escapejs }}", "form": "{{ it.form|escapejs }}", "free": "{% if it.drug_id %}0{% else %}1{% endif %}"}'>+ {{ it.drug_name|truncatechars:28 }}</button>
@@ -31,113 +74,75 @@
     </div>
     {% endif %}
     {% if favorites %}
-    <div class="flex flex-wrap items-center gap-1">
-      <span class="w-24 shrink-0 font-semibold text-stone-500">{% translate "بتكتبه كتير" %}</span>
+    <div class="flex flex-wrap items-center gap-1.5">
+      <span class="ws-label w-24 shrink-0">{% translate "بتكتبه كتير" %}</span>
       {% for it in favorites %}
-      <button type="button" class="rounded-md border border-stone-200 bg-white px-2 py-1 hover:bg-stone-50 pointer-coarse:px-3 pointer-coarse:py-2" dir="ltr"
-              title="{{ it.instructions }} {{ it.duration }}"
+      <button type="button" class="chip" dir="ltr" title="{{ it.instructions }} {{ it.duration }}"
               hx-post="{% url 'prescriptions:item_add' rx.pk %}" hx-target="#rx-builder" hx-swap="outerHTML"
               hx-vals='{"drug": "{{ it.drug_id }}"}'>+ {{ it.drug.name|truncatechars:28 }}</button>
       {% endfor %}
     </div>
     {% endif %}
+    {% if templates %}
+    <form class="flex flex-wrap items-center gap-1.5" hx-post="{% url 'prescriptions:action' rx.pk 'template' %}" hx-target="#rx-builder" hx-swap="outerHTML">
+      <span class="ws-label w-24 shrink-0">{% translate "القوالب" %}</span>
+      <select name="template" class="rounded-lg border border-stone-200 bg-white px-2 py-1 text-xs">
+        {% for t in templates %}<option value="{{ t.pk }}">{{ t.name }}</option>{% endfor %}
+      </select>
+      <button class="chip">{% translate "ضيف القالب" %}</button>
+    </form>
+    {% endif %}
   </div>
   {% endif %}
 
-  {# --- add a drug --- #}
-  <div class="card space-y-3 p-4">
-    {% if categories %}
-    {# Category buttons (the doctor's specialty list, in order). The choice sticks for the next drug (rx_js.html). #}
-    <div id="rx-cats" class="flex flex-wrap items-center gap-1" data-doctor="{{ rx.doctor_id }}"
-         data-search-url="{% url 'prescriptions:drug_search' rx.pk %}">
-      <button type="button" class="rx-cat rounded-full border border-stone-300 px-3 py-1 text-xs font-semibold" data-cat="">{% translate "الكل" %}</button>
-      {% for dc in categories %}
-      <button type="button" class="rx-cat rounded-full border border-stone-300 px-3 py-1 text-xs" data-cat="{{ dc.category_id }}" dir="ltr">{{ dc.category.name }}</button>
-      {% endfor %}
-      {% if can.drug_manage %}<a href="{% url 'prescriptions:categories' %}" class="px-1 text-xs text-stone-400 hover:text-brand" title="{% translate 'تعديل التصنيفات' %}">⚙</a>{% endif %}
-    </div>
-    {% elif can.drug_manage %}
-    <p class="text-xs text-stone-500">{% translate "اختار تخصصك مرة واحدة عشان تظهر تصنيفات الأدوية هنا:" %} <a href="{% url 'prescriptions:categories' %}" class="font-semibold text-brand">{% translate "تصنيفات الأدوية" %}</a></p>
-    {% endif %}
-    <form class="flex gap-2" hx-post="{% url 'prescriptions:item_add' rx.pk %}" hx-target="#rx-builder" hx-swap="outerHTML">
-      <input type="hidden" id="rx-category" name="category" value="">
-      <div class="relative flex-1">
-        <input id="rx-search" name="drug_name" autocomplete="off" dir="auto"
-               data-dictate="rx" data-dictate-url="{% url 'prescriptions:dictate' rx.pk %}" data-dictate-target="#rx-dictation" placeholder="{% translate 'ابحث أو اكتب اسم الدوا…' %}"
-               class="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
-               hx-get="{% url 'prescriptions:drug_search' rx.pk %}" hx-trigger="input changed delay:150ms" hx-target="#drug-results"
-               hx-swap="innerHTML" {# explicit: the enclosing form's outerHTML swap must not be inherited #}
-               hx-include="#rx-category"
-               onkeydown="const first = document.querySelector('#drug-results button');
-                          if (event.key === 'ArrowDown' && first) { first.focus(); event.preventDefault(); }
-                          if (event.key === 'Enter' && first) { first.click(); event.preventDefault(); }">
-        <div id="drug-results" class="absolute inset-x-0 z-20"></div>
-      </div>
-      {# type=button: Enter in the search box must not "submit" through this button (that would force free text). #}
-      <button type="button" class="btn-secondary whitespace-nowrap" title="{% translate 'إضافة النص زي ما هو (دوا مش في الكتالوج)' %}"
-              hx-post="{% url 'prescriptions:item_add' rx.pk %}" hx-include="#rx-search, #rx-category" hx-vals='{"free": "1"}'
-              hx-target="#rx-builder" hx-swap="outerHTML">+ {% translate "إضافة" %}</button>
-    </form>
-    <div class="flex flex-wrap items-center gap-2 text-sm">
-      {% if templates %}
-      <form class="flex items-center gap-1" hx-post="{% url 'prescriptions:action' rx.pk 'template' %}" hx-target="#rx-builder" hx-swap="outerHTML">
-        <select name="template" class="rounded-lg border border-stone-300 px-2 py-1.5 text-sm">
-          {% for t in templates %}<option value="{{ t.pk }}">{{ t.name }}</option>{% endfor %}
-        </select>
-        <button class="btn-ghost text-xs">{% translate "ضيف القالب" %}</button>
-      </form>
-      {% endif %}
-      {% if has_previous %}
-      <button class="btn-ghost text-xs" hx-post="{% url 'prescriptions:action' rx.pk 'repeat' %}" hx-target="#rx-builder" hx-swap="outerHTML">{% translate "كرر آخر روشتة" %}</button>
-      {% endif %}
-    </div>
-  </div>
-
-  {# --- lines --- #}
-  <div class="card divide-y divide-stone-100">
+  {# --- lines: name + actions, then form / dose / duration; cells look like text until touched --- #}
+  <div class="divide-y divide-stone-100 overflow-hidden rounded-xl border border-stone-200">
     {% for it in items %}
-    {# Two lines that always fit the pane: name + actions, then form / dose / duration (no sideways scrolling). #}
-    <div class="grid grid-cols-[minmax(0,5.5rem)_minmax(0,2fr)_minmax(0,1fr)] items-center gap-1.5 p-3 {% if it.needs_review %}bg-amber-50{% endif %}" data-item="{{ it.pk }}">
+    <div class="group grid grid-cols-[minmax(0,5.5rem)_minmax(0,2fr)_minmax(0,1fr)] items-center gap-x-1 gap-y-0.5 px-2 py-2 {% if it.needs_review %}border-s-4 border-amber-400 bg-amber-50{% else %}hover:bg-stone-50/60{% endif %}" data-item="{{ it.pk }}">
       {% url 'prescriptions:item_update' it.pk as cell_url %}
-      <input class="rx-cell col-span-2 row-start-1 w-full min-w-0 rounded-md border border-stone-200 px-2 py-1 text-sm font-semibold" dir="ltr" value="{{ it.drug_name }}" name="value"
+      <input class="rx-cell quiet-input col-span-2 row-start-1 font-semibold" dir="ltr" value="{{ it.drug_name }}" name="value"
              hx-post="{{ cell_url }}" hx-vals='{"field": "drug_name"}' hx-trigger="input changed delay:600ms, change" hx-target="#cell-{{ it.pk }}" aria-label="{% translate 'الدوا' %}">
-      <input class="rx-cell w-full min-w-0 rounded-md border border-stone-200 px-2 py-1 text-sm" placeholder="{% translate 'الشكل' %}" value="{{ it.form }}" name="value" list="rx-forms"
+      <input class="rx-cell quiet-input text-stone-500" placeholder="{% translate 'الشكل' %}" value="{{ it.form }}" name="value" list="rx-forms"
              hx-post="{{ cell_url }}" hx-vals='{"field": "form"}' hx-trigger="input changed delay:600ms, change" hx-target="#cell-{{ it.pk }}" aria-label="{% translate 'الشكل' %}">
-      <input class="rx-cell rx-instr w-full min-w-0 rounded-md border border-stone-200 px-2 py-1 text-sm" dir="auto" value="{{ it.instructions }}" name="value"
+      <input class="rx-cell rx-instr quiet-input" dir="auto" value="{{ it.instructions }}" name="value"
              placeholder="{% translate 'الجرعة' %}" {% if focus_last and forloop.last %}autofocus{% endif %}
              hx-post="{{ cell_url }}" hx-vals='{"field": "instructions"}' hx-trigger="input changed delay:600ms, change" hx-target="#cell-{{ it.pk }}" aria-label="{% translate 'الجرعة' %}">
-      <input class="rx-cell rx-duration w-full min-w-0 rounded-md border border-stone-200 px-2 py-1 text-sm" dir="auto" value="{{ it.duration }}" name="value"
+      <input class="rx-cell rx-duration quiet-input text-stone-600" dir="auto" value="{{ it.duration }}" name="value"
              placeholder="{% translate 'المدة' %}"
              hx-post="{{ cell_url }}" hx-vals='{"field": "duration"}' hx-trigger="input changed delay:600ms, change" hx-target="#cell-{{ it.pk }}" aria-label="{% translate 'المدة' %}">
       <div class="col-start-3 row-start-1 flex items-center justify-end gap-0.5 text-xs">
         <span id="cell-{{ it.pk }}" class="w-4"></span>
-        {% if it.needs_review %}<button class="btn-ghost px-1 text-amber-700" hx-post="{% url 'prescriptions:item_action' it.pk 'confirm' %}" hx-target="#rx-builder" hx-swap="outerHTML">✓ {% translate "تأكيد" %}</button>{% endif %}
-        {% if not it.drug_id and can.drug_manage %}<button class="btn-ghost px-1" title="{% translate 'ضيفه للكتالوج' %}" hx-post="{% url 'prescriptions:item_to_catalog' it.pk %}" hx-include="#rx-category" hx-target="#rx-builder" hx-swap="outerHTML">＋📚</button>{% endif %}
-        <button class="btn-ghost px-1" hx-post="{% url 'prescriptions:item_action' it.pk 'up' %}" hx-target="#rx-builder" hx-swap="outerHTML" aria-label="{% translate 'لفوق' %}">↑</button>
-        <button class="btn-ghost px-1" hx-post="{% url 'prescriptions:item_action' it.pk 'down' %}" hx-target="#rx-builder" hx-swap="outerHTML" aria-label="{% translate 'لتحت' %}">↓</button>
-        <button class="btn-ghost px-1 text-red-600" hx-post="{% url 'prescriptions:item_action' it.pk 'remove' %}" hx-target="#rx-builder" hx-swap="outerHTML" aria-label="{% translate 'مسح' %}">✕</button>
+        {% if it.needs_review %}<button class="rounded-md bg-amber-500 px-2 py-1 font-semibold text-white hover:bg-amber-600" hx-post="{% url 'prescriptions:item_action' it.pk 'confirm' %}" hx-target="#rx-builder" hx-swap="outerHTML">✓ {% translate "تأكيد" %}</button>{% endif %}
+        <span class="flex items-center gap-0.5 opacity-40 transition group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100">
+          {% if not it.drug_id and can.drug_manage %}<button class="btn-ghost px-1.5 py-1" title="{% translate 'ضيفه للكتالوج' %}" hx-post="{% url 'prescriptions:item_to_catalog' it.pk %}" hx-include="#rx-category" hx-target="#rx-builder" hx-swap="outerHTML">＋📚</button>{% endif %}
+          <button class="btn-ghost px-1.5 py-1" hx-post="{% url 'prescriptions:item_action' it.pk 'up' %}" hx-target="#rx-builder" hx-swap="outerHTML" aria-label="{% translate 'لفوق' %}">↑</button>
+          <button class="btn-ghost px-1.5 py-1" hx-post="{% url 'prescriptions:item_action' it.pk 'down' %}" hx-target="#rx-builder" hx-swap="outerHTML" aria-label="{% translate 'لتحت' %}">↓</button>
+          <button class="btn-ghost px-1.5 py-1 text-red-600 hover:bg-red-50" hx-post="{% url 'prescriptions:item_action' it.pk 'remove' %}" hx-target="#rx-builder" hx-swap="outerHTML" aria-label="{% translate 'مسح' %}">✕</button>
+        </span>
       </div>
     </div>
     {% empty %}
-    <p class="p-4 text-center text-sm text-stone-400">{% translate "مفيش أدوية لسه — ابحث فوق أو اختار قالب." %}</p>
+    <p class="p-6 text-center text-sm text-stone-400">{% translate "مفيش أدوية لسه — اختار تصنيف أو ابحث فوق." %}</p>
     {% endfor %}
   </div>
   <datalist id="rx-forms">{% for f in drug_forms %}<option value="{{ f }}">{% endfor %}</datalist>
 
   {% if phrases %}
-  <div class="flex flex-wrap gap-1" id="rx-phrases">
-    <span class="text-xs text-stone-500">{% translate "جمل جاهزة:" %}</span>
-    {% for p in phrases %}
-    <button type="button" class="rounded-md border border-stone-200 bg-stone-50 px-2 py-0.5 text-xs hover:bg-stone-100" data-kind="{{ p.kind }}" data-text="{{ p.text }}">{{ p.text }}</button>
-    {% endfor %}
-  </div>
+  <details class="group/ph" id="rx-phrases-box">
+    <summary class="cursor-pointer text-xs font-semibold text-stone-500 hover:text-brand">{% translate "جمل جاهزة للجرعة والمدة" %} <span class="group-open/ph:hidden">▾</span><span class="hidden group-open/ph:inline">▴</span></summary>
+    <div class="mt-2 flex flex-wrap gap-1" id="rx-phrases">
+      {% for p in phrases %}
+      <button type="button" class="chip-soft" data-kind="{{ p.kind }}" data-text="{{ p.text }}">{{ p.text }}</button>
+      {% endfor %}
+    </div>
+  </details>
   {% endif %}
 
-  {# --- advice, next visit, finalize --- #}
-  <div class="card grid gap-3 p-4 sm:grid-cols-3">
+  {# --- advice, next visit, sending --- #}
+  <div class="ws-section grid gap-3 sm:grid-cols-3">
     <div class="form-field sm:col-span-2">
       <label for="rx-advice">{% translate "نصايح" %}</label>
-      <textarea id="rx-advice" name="advice" rows="2" dir="auto" data-dictate hx-post="{% url 'prescriptions:fields' rx.pk %}" hx-trigger="input changed delay:800ms, change" hx-target="#rx-fields-status">{{ rx.advice }}</textarea>
+      <div class="dictate-corner"><textarea id="rx-advice" name="advice" rows="2" dir="auto" data-dictate hx-post="{% url 'prescriptions:fields' rx.pk %}" hx-trigger="input changed delay:800ms, change" hx-target="#rx-fields-status">{{ rx.advice }}</textarea></div>
     </div>
     <div class="space-y-3">
       <div class="form-field">
@@ -155,7 +160,7 @@
     </div>
   </div>
 
-  <form id="rx-finalize" class="card space-y-3 p-4" hx-post="{% url 'prescriptions:action' rx.pk 'finalize' %}" hx-target="#rx-builder" hx-swap="outerHTML">
+  <form id="rx-finalize" class="ws-section space-y-3" hx-post="{% url 'prescriptions:action' rx.pk 'finalize' %}" hx-target="#rx-builder" hx-swap="outerHTML">
     <div id="rx-warnings">{% include "prescriptions/partials/warnings.html" %}</div>
     <div class="flex flex-wrap items-center justify-end gap-2">
       <button type="button" class="btn-ghost text-sm" onclick="const n = prompt('{% translate 'اسم القالب؟' %}'); if (n) htmx.ajax('POST', '{% url 'prescriptions:action' rx.pk 'save_template' %}', {target: '#rx-builder', swap: 'outerHTML', values: {name: n}})">{% translate "حفظ كقالب" %}</button>
@@ -164,9 +169,10 @@
     </div>
   </form>
 
+
   {% else %}
   {# --- final / voided: read-only --- #}
-  <div class="card p-4">
+  <div class="rounded-xl border border-stone-200 p-4">
     <ol class="space-y-2 text-sm">
       {% for it in items %}
       <li><span class="font-semibold" dir="ltr">{{ forloop.counter }}. {{ it.drug_name }}</span> <span class="text-stone-500">{{ it.form }}</span>
