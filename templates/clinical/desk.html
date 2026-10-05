@@ -2,11 +2,12 @@
 {% load i18n %}
 {% block title %}{% translate "شاشة الدكتور" %}{% endblock %}
 {% block desk %}
-<div class="card flex flex-col items-center gap-4 p-10 text-center">
+<div class="flex flex-col items-center gap-4 py-16 text-center">
   <p class="text-stone-500">{% translate "مفيش مريض عندك دلوقتي." %}</p>
+  {% include "clinical/partials/next_patient.html" with ready=None waiting_count=q_waiting|length %}
   {% if q_waiting and can.clinical_edit %}
   <form method="post" action="{% url 'clinical:call' q_waiting.0.pk %}">{% csrf_token %}
-    <button class="btn-primary">{% blocktranslate with p=q_waiting.0.patient.full_name %}استدعاء {{ p }}{% endblocktranslate %}</button>
+    <button class="btn-secondary">{% blocktranslate with p=q_waiting.0.patient.full_name %}استدعاء {{ p }}{% endblocktranslate %}</button>
   </form>
   {% endif %}
 </div>

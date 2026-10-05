@@ -62,12 +62,7 @@ def can_print(request) -> bool:
     )
 
 
-def _current_for_visit(visit):
-    draft = Prescription.objects.filter(visit=visit, status=RxStatus.DRAFT).order_by("-created_at").first()
-    if draft:
-        return draft
-    final = Prescription.objects.filter(visit=visit, status=RxStatus.FINAL).order_by("-issued_at").first()
-    return final or services.draft_for_visit(visit)
+_current_for_visit = services.current_for_visit
 
 
 def _builder_ctx(request, rx, **extra):
@@ -85,11 +80,17 @@ def _builder_ctx(request, rx, **extra):
         "send_enabled": ns.send_prescription_after_visit,
         "rx_settings": PrescriptionSettings.for_org(org),
         "categories": cats.for_doctor(rx.doctor),
+        "recent": services.recent_for_patient(rx.patient, exclude_rx=rx) if rx.is_editable else [],
+        "favorites": services.favorites_for_doctor(rx.doctor) if rx.is_editable else [],
         "drug_forms": DRUG_FORMS,
         "revisions": Prescription.objects.filter(visit=rx.visit).exclude(pk=rx.pk).order_by("-created_at")
         if rx.visit_id
         else [],
     }
+    # quick-add chips: hide what's already on this prescription
+    have = {(it.drug_id or it.drug_name.strip().lower()) for it in ctx["items"]}
+    ctx["recent"] = [it for it in ctx["recent"] if (it.drug_id or it.drug_name.strip().lower()) not in have]
+    ctx["favorites"] = [it for it in ctx["favorites"] if it.drug_id not in have]
     ctx.update(extra)
     return ctx
 
@@ -146,8 +147,18 @@ def item_add(request, pk):
         q = request.POST.get("drug_name", "")
         matches = services.search_drugs(request.organization, q, limit=1, category=_category(request)) if q else []
         drug = matches[0] if matches else None
+    # Defaults: what the chip carried (the patient's previous line), else how this doctor last prescribed the drug,
+    # else the catalog's default (inside add_item). A workflow shortcut — every cell stays editable.
+    instructions = request.POST.get("instructions")
+    duration = request.POST.get("duration")
+    form = request.POST.get("form")
+    if drug is not None and instructions is None:
+        last = services.last_usage(rx.doctor, drug.pk)
+        if last is not None:
+            instructions, duration, form = last.instructions, last.duration, last.form or None
     try:
-        services.add_item(rx, drug=drug, drug_name=request.POST.get("drug_name", ""))
+        services.add_item(rx, drug=drug, drug_name=request.POST.get("drug_name", ""), instructions=instructions,
+                          duration=duration, form=form)  # fmt: skip
     except services.PrescriptionError as e:
         return _error(request, rx, e)
     return _builder(request, rx, focus_last=True)

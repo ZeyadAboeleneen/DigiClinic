@@ -1,5 +1,5 @@
 {% load i18n %}
-<div id="rx-builder" class="space-y-4">
+<div id="rx-builder" class="space-y-4" data-status="{{ rx.status }}" data-items="{{ items|length }}" data-pdf="{% url 'prescriptions:pdf' rx.pk %}?mode=print">
   <div class="flex flex-wrap items-center gap-2">
     <h2 class="font-bold">{% translate "الروشتة" %}</h2>
     {% if rx.display_number %}<span class="badge bg-stone-100 font-mono text-stone-700" dir="ltr">{{ rx.display_number }}</span>{% endif %}
@@ -11,6 +11,39 @@
   {% if notice %}<div class="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm font-semibold text-green-700">{{ notice }}</div>{% endif %}
 
   {% if rx.is_editable %}
+  {% if has_previous and not items %}
+  {# Repeat visit, empty prescription: the fastest path is the last one, then edit. #}
+  <button class="btn-primary w-full justify-center py-2.5" hx-post="{% url 'prescriptions:action' rx.pk 'repeat' %}" hx-target="#rx-builder" hx-swap="outerHTML">↻ {% translate "كرر آخر روشتة" %}</button>
+  {% endif %}
+
+  {% if recent or favorites %}
+  {# One tap adds the drug the way it was given before (patient's line, else the doctor's own usual dose). #}
+  <div class="space-y-1.5 text-xs" id="rx-quick">
+    {% if recent %}
+    <div class="flex flex-wrap items-center gap-1">
+      <span class="w-24 shrink-0 font-semibold text-stone-500">{% translate "أدوية المريض" %}</span>
+      {% for it in recent %}
+      <button type="button" class="rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-sky-900 hover:bg-sky-100 pointer-coarse:px-3 pointer-coarse:py-2" dir="ltr"
+              title="{{ it.instructions }} {{ it.duration }}"
+              hx-post="{% url 'prescriptions:item_add' rx.pk %}" hx-target="#rx-builder" hx-swap="outerHTML"
+              hx-vals='{"drug": "{% if it.drug_id %}{{ it.drug_id }}{% endif %}", "drug_name": "{{ it.drug_name|escapejs }}", "instructions": "{{ it.instructions|escapejs }}", "duration": "{{ it.duration|escapejs }}", "form": "{{ it.form|escapejs }}", "free": "{% if it.drug_id %}0{% else %}1{% endif %}"}'>+ {{ it.drug_name|truncatechars:28 }}</button>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if favorites %}
+    <div class="flex flex-wrap items-center gap-1">
+      <span class="w-24 shrink-0 font-semibold text-stone-500">{% translate "بتكتبه كتير" %}</span>
+      {% for it in favorites %}
+      <button type="button" class="rounded-md border border-stone-200 bg-white px-2 py-1 hover:bg-stone-50 pointer-coarse:px-3 pointer-coarse:py-2" dir="ltr"
+              title="{{ it.instructions }} {{ it.duration }}"
+              hx-post="{% url 'prescriptions:item_add' rx.pk %}" hx-target="#rx-builder" hx-swap="outerHTML"
+              hx-vals='{"drug": "{{ it.drug_id }}"}'>+ {{ it.drug.name|truncatechars:28 }}</button>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
   {# --- add a drug --- #}
   <div class="card space-y-3 p-4">
     {% if categories %}
@@ -121,7 +154,7 @@
     </div>
   </div>
 
-  <form class="card space-y-3 p-4" hx-post="{% url 'prescriptions:action' rx.pk 'finalize' %}" hx-target="#rx-builder" hx-swap="outerHTML">
+  <form id="rx-finalize" class="card space-y-3 p-4" hx-post="{% url 'prescriptions:action' rx.pk 'finalize' %}" hx-target="#rx-builder" hx-swap="outerHTML">
     <div id="rx-warnings">{% include "prescriptions/partials/warnings.html" %}</div>
     <div class="flex flex-wrap items-center justify-end gap-2">
       <button type="button" class="btn-ghost text-sm" onclick="const n = prompt('{% translate 'اسم القالب؟' %}'); if (n) htmx.ajax('POST', '{% url 'prescriptions:action' rx.pk 'save_template' %}', {target: '#rx-builder', swap: 'outerHTML', values: {name: n}})">{% translate "حفظ كقالب" %}</button>

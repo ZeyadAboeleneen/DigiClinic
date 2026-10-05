@@ -1,10 +1,16 @@
+{% load i18n %}
 <div class="form-field">
-  <label for="f-{{ name }}">{{ label }}</label>
+  {% if label %}<label for="f-{{ name }}">{{ label }}</label>{% endif %}
   {% if list %}
   <input id="f-{{ name }}" name="value" data-field="{{ name }}" class="autosave" dir="auto" {% if editable %}data-dictate{% endif %} list="{{ list }}" autocomplete="off"
          value="{{ value }}" {% if not editable %}disabled{% endif %}>
   {% else %}
   <textarea id="f-{{ name }}" name="value" data-field="{{ name }}" class="autosave" dir="auto" {% if editable %}data-dictate{% endif %} rows="{{ rows }}"
             {% if not editable %}disabled{% endif %}>{{ value }}</textarea>
+  {% endif %}
+  {% if chips and editable %}
+  <div class="mt-1 flex flex-wrap gap-1">
+    {% for c in chips %}<button type="button" class="rounded-md bg-stone-100 px-2 py-0.5 text-xs text-stone-700 hover:bg-stone-200 pointer-coarse:px-3 pointer-coarse:py-1.5" data-insert="{{ name }}" data-text="{{ c }}"><bdi dir="auto">{{ c }}</bdi></button>{% endfor %}
+  </div>
   {% endif %}
 </div>

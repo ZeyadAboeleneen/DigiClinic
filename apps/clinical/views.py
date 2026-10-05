@@ -18,9 +18,10 @@ from apps.core.timeutils import CAIRO
 from apps.doctors.services import get_doctor
 from apps.patients import custom_fields
 from apps.patients.models import FieldScope, Patient
+from apps.prescriptions import services as rx_services
 from apps.scheduling.models import Appointment
 
-from . import services
+from . import services, workspace
 from .forms import AttachmentForm
 from .models import Attachment, Visit, VisitStatus, Vitals
 
@@ -138,6 +139,9 @@ def _visit_form_ctx(visit):
         "visit": visit,
         "custom": [(custom_fields.PREFIX + d.key, d, visit.custom_fields.get(d.key)) for d in defs],
         "diagnoses": services.diagnosis_suggestions(visit.doctor),
+        "phrases": {f: workspace.quick_phrases(visit.doctor, f) for f in workspace.PHRASE_FIELDS},
+        "followup_choices": [(7, _("أسبوع")), (14, _("أسبوعين")), (30, _("شهر")), (90, _("3 شهور"))],
+        "followup_base": timezone.localtime(visit.finished_at or timezone.now(), CAIRO).date(),
     }
 
 
@@ -146,7 +150,8 @@ def _visit_form_ctx(visit):
 def visit_view(request, pk):
     visit = _visit(request, pk)
     services.log_clinical_view(request, visit.patient)
-    ctx = {**_queue_ctx(request), **_header_ctx(visit.patient, visit), **_visit_form_ctx(visit), "tab": "visit"}
+    ctx = {**_queue_ctx(request), **_header_ctx(visit.patient, visit), **_visit_form_ctx(visit), "tab": "visit",
+           **workspace.snapshot(visit)}  # fmt: skip
     return render(request, "clinical/visit.html", ctx)
 
 
@@ -174,6 +179,8 @@ def visit_finish(request, pk):
         messages.error(request, str(e))
         return redirect("clinical:visit", pk=visit.pk)
     audit.log("visit.finished", request=request, target=visit, summary=visit.patient.full_name)
+    if request.htmx:  # the workspace finishes in place (the print dialog keeps running) and waits for the next patient
+        return render(request, "clinical/partials/finished.html", {"visit": visit, **_poll_ctx(request)})
     if visit.followup_after_days:
         messages.info(request, _("الاستقبال هيشوف طلب حجز الإعادة."))
     if request.POST.get("next") == "1":
@@ -182,6 +189,68 @@ def visit_finish(request, pk):
             return redirect("clinical:visit", pk=nxt.pk)
         messages.info(request, _("مفيش حد مستني."))
     return redirect("clinical:desk")
+
+
+def _poll_ctx(request):
+    current, waiting, _n = services.today_queue(get_doctor(request.organization))
+    return {"ready": current[0] if current else None, "waiting_count": len(waiting)}
+
+
+@require_perm("clinical.view")
+@desk_unlocked
+def desk_poll(request):
+    """ "مستني المريض الجاي": reception moves the next patient in → this shows "مريض جديد جاهز" (polled every 5 s)."""
+    return render(request, "clinical/partials/next_patient.html", _poll_ctx(request))
+
+
+@require_perm("clinical.view")
+@desk_unlocked
+def visit_compare(request, pk, other_pk):
+    """A previous visit next to the current one (drawer): preview, compare, and pick what to reuse."""
+    visit = _visit(request, pk)
+    other = get_object_or_404(
+        Visit.objects.for_org(request.organization).filter(patient=visit.patient).exclude(pk=visit.pk), pk=other_pk
+    )
+    labels = {f: Visit._meta.get_field(f).verbose_name for f in workspace.REUSABLE}
+    rows = [
+        (f, labels[f], getattr(other, f), getattr(visit, f), f in workspace.CHECKED_BY_DEFAULT)
+        for f in workspace.REUSABLE
+        if getattr(other, f) not in ("", None)
+    ]
+    ctx = {
+        "rows": rows,
+        "visit": visit,
+        "other": other,
+        "now_vitals": workspace.vitals_of(visit),
+        "other_vitals": workspace.vitals_of(other),
+        "other_rx": workspace.final_rx(other),
+        "now_rx": rx_services.current_for_visit(visit)
+        if visit.status != VisitStatus.FINISHED
+        else workspace.final_rx(visit),
+        "can_edit": has_perm(request.membership, "clinical.edit") and visit.status != VisitStatus.FINISHED,
+    }
+    return render(request, "clinical/partials/compare.html", ctx)
+
+
+@require_POST
+@require_perm("clinical.edit")
+@desk_unlocked
+def visit_reuse(request, pk):
+    visit = _visit(request, pk)
+    source = get_object_or_404(Visit.objects.for_org(request.organization), pk=request.POST.get("source"))
+    fields = request.POST.getlist("fields")
+    if "prescription" in fields and not has_perm(request.membership, "prescription.write"):
+        fields.remove("prescription")
+    try:
+        done = workspace.reuse(visit, source, fields, by=request.user)
+    except (services.VisitError, ValidationError) as e:
+        messages.error(request, " ".join(getattr(e, "messages", [str(e)])))
+    else:
+        audit.log("visit.reused", request=request, target=visit, summary=",".join(done))
+        messages.success(request, _("اتنقل من الزيارة اللي فاتت.") if done else _("مفيش حاجة جديدة تتنقل."))
+    resp = HttpResponse(status=204)
+    resp["HX-Refresh"] = "true"  # fields + prescription re-render from the server
+    return resp
 
 
 # --- patient file (any patient, from search) --------------------------------------------------
@@ -212,7 +281,13 @@ def patient_history(request, pk):
     return render(
         request,
         "clinical/partials/tab_history.html",
-        {"patient": patient, "visits": visits, "weight_chart": _chart(weights), "bp_chart": _chart(systolic)},
+        {
+            "patient": patient,
+            "visits": visits,
+            "weight_chart": _chart(weights),
+            "bp_chart": _chart(systolic),
+            "current_visit": int(request.GET["visit"]) if request.GET.get("visit", "").isdigit() else None,
+        },
     )
 
 

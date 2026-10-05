@@ -142,7 +142,10 @@ def finish_visit(visit, *, by):
 
 
 def diagnosis_suggestions(doctor, limit=200):
-    seen, out = set(), []
+    """The doctor's own diagnoses, most used first (ties: most recent first) — feeds the diagnosis autocomplete."""
+    from collections import Counter
+
+    counts, order = Counter(), {}
     tags_lists = (
         Visit.objects.filter(organization=doctor.organization, doctor=doctor)
         .exclude(diagnosis_tags=[])
@@ -151,12 +154,9 @@ def diagnosis_suggestions(doctor, limit=200):
     )
     for tags in tags_lists:
         for t in tags:
-            if t not in seen:
-                seen.add(t)
-                out.append(t)
-                if len(out) >= limit:
-                    return out
-    return out
+            counts[t] += 1
+            order.setdefault(t, len(order))
+    return sorted(counts, key=lambda t: (-counts[t], order[t]))[:limit]
 
 
 # --- follow-ups (reception task) -------------------------------------------------------------

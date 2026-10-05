@@ -1,0 +1,12 @@
+{% load i18n %}
+{% comment %}Polled every 5 s while the doctor waits. Reception moves the next patient in → a clear "ready" banner.{% endcomment %}
+<div id="next-patient" hx-get="{% url 'clinical:poll' %}" hx-trigger="every 5s" hx-swap="outerHTML">
+  {% if ready %}
+  <div class="flex flex-wrap items-center justify-center gap-3 rounded-lg bg-brand px-4 py-3 text-white shadow">
+    <span class="font-bold">🔔 {% translate "مريض جديد جاهز" %}: {{ ready.patient.full_name }}</span>
+    <a href="{% url 'clinical:desk' %}" class="rounded-md bg-white px-4 py-1.5 text-sm font-bold text-brand">{% translate "افتح" %}</a>
+  </div>
+  {% else %}
+  <p class="text-sm text-stone-500">⏳ {% translate "مستني المريض الجاي..." %}{% if waiting_count %} · {% blocktranslate count n=waiting_count %}{{ n }} مستني في الاستقبال{% plural %}{{ n }} مستنيين في الاستقبال{% endblocktranslate %}{% endif %}</p>
+  {% endif %}
+</div>

@@ -1,0 +1,57 @@
+{% load i18n %}
+{% comment %}Patient snapshot: last visit, last prescription, latest readings and what changed — readable in ~5 s.
+Only recorded values are shown; a missing value simply leaves its item out.{% endcomment %}
+{% if prev or prev_rx or latest_vitals or changes %}
+<section id="snapshot" class="mb-3 grid gap-x-6 gap-y-2 rounded-lg bg-stone-50 px-4 py-3 text-sm lg:grid-cols-[1.2fr_1.4fr_1fr]">
+  <div class="min-w-0">
+    <p class="text-xs font-semibold text-stone-500">{% translate "الزيارة اللي فاتت" %}{% if prev %} · <span dir="ltr">{{ prev.finished_at|date:"j/n/Y" }}</span>{% endif %}</p>
+    {% if prev %}
+    <p class="truncate font-semibold" title="{{ prev.diagnosis }}"><bdi dir="auto">{{ prev.diagnosis|default:"—" }}</bdi></p>
+    {% if prev.chief_complaint %}<p class="truncate text-xs text-stone-500" title="{{ prev.chief_complaint }}"><bdi dir="auto">{{ prev.chief_complaint }}</bdi></p>{% endif %}
+    <div class="mt-1 flex flex-wrap gap-3 text-xs font-semibold">
+      <button type="button" class="text-brand hover:underline pointer-coarse:py-1" onclick="openDrawer('{% url 'clinical:visit_compare' visit.pk prev.pk %}', '{% translate 'الزيارة اللي فاتت' %}')">{% translate "عرض ومقارنة" %}</button>
+      {% if can.clinical_edit and visit.status != "finished" %}
+      <button type="button" class="text-brand hover:underline pointer-coarse:py-1" onclick="openDrawer('{% url 'clinical:visit_compare' visit.pk prev.pk %}?reuse=1', '{% translate 'استخدم الزيارة اللي فاتت' %}')">↻ {% translate "استخدم الزيارة اللي فاتت" %}</button>
+      {% endif %}
+    </div>
+    {% else %}
+    <p class="text-stone-400">{% translate "أول زيارة" %}</p>
+    {% endif %}
+  </div>
+
+  <div class="min-w-0">
+    <p class="text-xs font-semibold text-stone-500">{% translate "آخر روشتة" %}{% if prev_rx %} · <span dir="ltr">{{ prev_rx.issued_at|date:"j/n/Y" }}</span>{% endif %}</p>
+    {% if prev_rx %}
+    <ul class="space-y-0.5">
+      {% for it in prev_rx.items.all|slice:":4" %}
+      <li class="truncate" title="{{ it.instructions }} {{ it.duration }}"><span class="font-semibold" dir="ltr">{{ it.drug_name }}</span> <span class="text-xs text-stone-500" dir="auto">{{ it.instructions }}{% if it.duration %} · {{ it.duration }}{% endif %}</span></li>
+      {% endfor %}
+      {% if prev_rx.items.all|length > 4 %}<li class="text-xs text-stone-400">+{{ prev_rx.items.all|length|add:"-4" }}</li>{% endif %}
+    </ul>
+    {% else %}<p class="text-stone-400">—</p>{% endif %}
+  </div>
+
+  <div class="min-w-0">
+    {% if latest_vitals and not latest_vitals.is_empty %}
+    <p class="text-xs font-semibold text-stone-500">{% if latest_is_today %}{% translate "قياسات النهارده" %}{% else %}{% translate "آخر قياسات" %} · <span dir="ltr">{{ latest_vitals.recorded_at|date:"j/n/Y" }}</span>{% endif %}</p>
+    <p class="flex flex-wrap gap-x-3" dir="ltr">
+      {% if latest_vitals.bp_systolic %}<span>BP <b>{{ latest_vitals.bp_systolic }}/{{ latest_vitals.bp_diastolic }}</b></span>{% endif %}
+      {% if latest_vitals.weight_kg %}<span><b>{{ latest_vitals.weight_kg }}</b> kg</span>{% endif %}
+      {% if latest_vitals.blood_glucose %}<span>{% translate "سكر" %} <b>{{ latest_vitals.blood_glucose }}</b></span>{% endif %}
+    </p>
+    {% endif %}
+    {% if changes %}
+    <p class="mt-1 text-xs font-semibold text-stone-500">{% translate "اتغير من الزيارة اللي فاتت" %}</p>
+    <ul class="text-xs">
+      {% for c in changes %}
+      <li>{{ c.label }}:
+        {% if c.note %}<bdi dir="auto">{{ c.note }}</bdi>
+        {% else %}<span dir="ltr">{{ c.before }} → <b>{{ c.after }}</b></span> {% if c.tone == "up" %}↑{% elif c.tone == "down" %}↓{% endif %}{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% if followup_due and not changes %}<p class="mt-1 text-xs text-stone-500">{% translate "الإعادة كانت مطلوبة" %} <span dir="ltr">{{ followup_due|date:"j/n/Y" }}</span></p>{% endif %}
+  </div>
+</section>
+{% endif %}

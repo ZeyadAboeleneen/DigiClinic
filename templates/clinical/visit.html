@@ -2,37 +2,163 @@
 {% load i18n %}
 {% block title %}{{ patient.full_name }}{% endblock %}
 {% block desk %}
+{% comment %}Doctor workspace: sticky patient header → snapshot (last visit / last prescription / readings / changes) →
+the visit and the prescription side by side → a sticky action bar. History, prescriptions, attachments and data open
+in a drawer over the page, so the visit being written is never left (or reloaded).{% endcomment %}
 {% include "clinical/partials/header.html" %}
-{% url 'clinical:history' patient.pk as history_url %}{% url 'clinical:attachments' patient.pk as attachments_url %}{% url 'clinical:data' patient.pk as data_url %}
-{% translate "التاريخ" as l_history %}{% translate "المرفقات" as l_att %}{% translate "البيانات" as l_data %}
-<div class="mb-4 flex flex-wrap gap-x-1 border-b border-stone-200 text-sm font-semibold" id="tabs">
-  <button type="button" class="tab-btn whitespace-nowrap border-b-2 border-brand px-3 py-2 text-brand" onclick="showVisitTab(this)">{% translate "الزيارة الحالية" %}</button>
-  {% if can.prescription_write %}<button type="button" class="tab-btn whitespace-nowrap px-3 py-2 text-stone-500" hx-get="{% url 'prescriptions:builder' visit.pk %}" hx-target="#tab-body" onclick="showOtherTab(this)">{% translate "الروشتة" %}</button>{% endif %}
-  <button type="button" class="tab-btn whitespace-nowrap px-3 py-2 text-stone-500" hx-get="{{ history_url }}" hx-target="#tab-body" onclick="showOtherTab(this)">{{ l_history }}</button>
-  <button type="button" class="tab-btn whitespace-nowrap px-3 py-2 text-stone-500" hx-get="{{ attachments_url }}?visit={{ visit.pk }}" hx-target="#tab-body" onclick="showOtherTab(this)">{{ l_att }}</button>
-  <button type="button" class="tab-btn whitespace-nowrap px-3 py-2 text-stone-500" hx-get="{% url 'prescriptions:patient_list' patient.pk %}" hx-target="#tab-body" onclick="showOtherTab(this)">{% translate "الروشتات" %}</button>
-  <button type="button" class="tab-btn whitespace-nowrap px-3 py-2 text-stone-500" hx-get="{{ data_url }}" hx-target="#tab-body" onclick="showOtherTab(this)">{{ l_data }}</button>
+{% include "clinical/partials/snapshot.html" %}
+
+<div id="workspace" class="pb-20">
+  <div class="grid gap-x-8 gap-y-6 {% if can.prescription_write %}lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]{% endif %}">
+    <section id="pane-visit" class="min-w-0 scroll-mt-28">
+      {% include "clinical/partials/tab_visit.html" %}
+    </section>
+    {% if can.prescription_write %}
+    <section id="pane-rx" class="min-w-0 scroll-mt-28 lg:border-s lg:border-stone-200 lg:ps-8">
+      <div id="rx-dictation" class="mb-3"></div>
+      <div hx-get="{% url 'prescriptions:builder' visit.pk %}" hx-trigger="load" hx-swap="outerHTML">
+        <p class="py-8 text-center text-sm text-stone-400">{% translate "بيحمّل الروشتة..." %}</p>
+      </div>
+    </section>
+    {% endif %}
+  </div>
 </div>
 
-<div id="visit-tab">{% include "clinical/partials/tab_visit.html" %}</div>
-<div id="rx-dictation" class="mb-3"></div>
-<div id="tab-body" class="hidden"></div>
+{# --- sticky action bar --- #}
+<div id="action-bar" class="fixed inset-x-0 bottom-0 z-30 border-t border-stone-200 bg-white/95 backdrop-blur lg:start-64">
+  <div class="flex items-center gap-1 overflow-x-auto px-3 py-2 text-sm lg:px-8">
+    {% if can.prescription_write %}
+    <a href="#pane-visit" class="btn-ghost whitespace-nowrap px-3 lg:hidden">{% translate "الكشف" %}</a>
+    <a href="#pane-rx" class="btn-ghost whitespace-nowrap px-3 lg:hidden">{% translate "الروشتة" %}</a>
+    {% endif %}
+    <button type="button" class="btn-ghost whitespace-nowrap px-3" onclick="openDrawer('{% url 'clinical:history' patient.pk %}?visit={{ visit.pk }}', '{% translate 'التاريخ' %}')">🗂 {% translate "التاريخ" %}</button>
+    {% if can.prescription_write %}<button type="button" class="btn-ghost whitespace-nowrap px-3" onclick="openDrawer('{% url 'prescriptions:patient_list' patient.pk %}', '{% translate 'الروشتات' %}')">{% translate "الروشتات" %}</button>{% endif %}
+    <button type="button" class="btn-ghost whitespace-nowrap px-3" onclick="openDrawer('{% url 'clinical:attachments' patient.pk %}?visit={{ visit.pk }}', '{% translate 'المرفقات' %}')">📎 {% translate "المرفقات" %}</button>
+    <button type="button" class="btn-ghost whitespace-nowrap px-3" onclick="openDrawer('{% url 'clinical:data' patient.pk %}', '{% translate 'البيانات' %}')">{% translate "البيانات" %}</button>
+    {% if can.clinical_edit and visit.status != "finished" %}
+    <span class="ms-auto"></span>
+    <span class="hidden whitespace-nowrap text-xs text-stone-400 xl:inline">Ctrl+Enter</span>
+    <button type="button" class="btn-primary whitespace-nowrap" onclick="finishVisit()">✓ {% translate "إنهاء الكشف" %}</button>
+    {% endif %}
+  </div>
+</div>
+
+{# --- drawer (history / prescriptions / attachments / data / a previous visit) --- #}
+<div id="drawer-backdrop" class="fixed inset-0 z-40 hidden bg-black/20" onclick="closeDrawer()"></div>
+<aside id="drawer" class="fixed inset-y-0 end-0 z-50 hidden w-full max-w-2xl flex-col bg-white shadow-2xl" aria-hidden="true">
+  <div class="flex items-center gap-3 border-b border-stone-200 px-4 py-3">
+    <h2 id="drawer-title" class="font-bold"></h2>
+    <button type="button" class="btn-ghost ms-auto px-3 text-lg" onclick="closeDrawer()" aria-label="{% translate 'قفل' %}">✕</button>
+  </div>
+  <div id="drawer-body" class="flex-1 overflow-y-auto p-4"></div>
+</aside>
+
+{# --- finish summary (warnings never block) --- #}
+<dialog id="finish-dialog" class="m-auto w-full max-w-md rounded-xl p-0 shadow-2xl backdrop:bg-black/30">
+  <div class="space-y-4 p-5">
+    <h2 class="text-lg font-bold">{% translate "إنهاء الكشف" %}</h2>
+    <ul id="finish-checks" class="space-y-1.5 text-sm"></ul>
+    <p id="finish-error" class="hidden rounded-md bg-red-50 px-3 py-2 text-sm font-semibold text-red-700"></p>
+    <div class="flex flex-wrap justify-end gap-2">
+      <button type="button" class="btn-ghost" onclick="document.getElementById('finish-dialog').close()">{% translate "رجوع" %}</button>
+      <button type="button" id="finish-go" class="btn-primary" onclick="doFinish()"></button>
+    </div>
+  </div>
+</dialog>
+<form id="finish-form" hx-post="{% url 'clinical:visit_finish' visit.pk %}" hx-target="#workspace" hx-swap="innerHTML" class="hidden">{% csrf_token %}</form>
 
 <script>
-  function markTab(btn) {
-    document.querySelectorAll("#tabs .tab-btn").forEach((b) => b.classList.remove("border-b-2", "border-brand", "text-brand"));
-    btn.classList.add("border-b-2", "border-brand", "text-brand");
-  }
-  // The visit form stays in the DOM (hidden) while other tabs show, so nothing typed is ever discarded.
-  function showVisitTab(btn) {
-    markTab(btn);
-    document.getElementById("visit-tab").classList.remove("hidden");
-    document.getElementById("tab-body").classList.add("hidden");
-  }
-  function showOtherTab(btn) {
-    markTab(btn);
-    document.getElementById("visit-tab").classList.add("hidden");
-    document.getElementById("tab-body").classList.remove("hidden");
-  }
+  const T = {
+    complaint: "{% translate 'الشكوى' %}", exam: "{% translate 'الفحص' %}", dx: "{% translate 'التشخيص' %}",
+    rx: "{% translate 'الروشتة' %}", fu: "{% translate 'الإعادة' %}", noRx: "{% translate 'مفيش أدوية' %}",
+    rxDraft: "{% translate 'هتتعتمد وتتطبع' %}", rxFinal: "{% translate 'معتمدة' %}", noFu: "{% translate 'مش محددة' %}",
+    empty: "{% translate 'فاضي' %}", finishPrint: "{% translate 'إنهاء وطباعة الروشتة' %}", finish: "{% translate 'إنهاء الكشف' %}",
+    reprint: "{% translate 'إنهاء وطباعة' %}", rxBlocked: "{% translate 'الروشتة محتاجة مراجعة (تحذيرات أو سطور متعلمة بالصوت) — شوفها وبعدين اضغط إنهاء تاني.' %}",
+    days: "{% translate 'بعد' %}", dayUnit: "{% translate 'يوم' %}",
+  };
+
+  // Drawer: loads a partial over the workspace; the visit underneath is untouched (no navigation, no reload).
+  window.openDrawer = (url, title) => {
+    document.getElementById("drawer-title").textContent = title || "";
+    document.getElementById("drawer-body").innerHTML = '<p class="py-8 text-center text-sm text-stone-400">…</p>';
+    htmx.ajax("GET", url, { target: "#drawer-body", swap: "innerHTML" });
+    const d = document.getElementById("drawer");
+    d.classList.remove("hidden"); d.classList.add("flex");
+    d.setAttribute("aria-hidden", "false");
+    document.getElementById("drawer-backdrop").classList.remove("hidden");
+  };
+  window.closeDrawer = () => {
+    const d = document.getElementById("drawer");
+    d.classList.add("hidden"); d.classList.remove("flex");
+    d.setAttribute("aria-hidden", "true");
+    document.getElementById("drawer-backdrop").classList.add("hidden");
+  };
+
+  // Finish: save pending fields → short summary (✓ / ⚠, never blocking) → finalize + print the draft prescription if
+  // it has lines → finish the visit in place → "waiting for the next patient".
+  const val = (id) => (document.getElementById(id)?.value || "").trim();
+  const rxState = () => {
+    const b = document.getElementById("rx-builder");
+    return b ? { status: b.dataset.status, items: parseInt(b.dataset.items || "0", 10), pdf: b.dataset.pdf } : null;
+  };
+  window.finishVisit = async () => {
+    if (window.flushVisit) await window.flushVisit();
+    const rx = rxState();
+    const fu = val("f-followup");
+    const rows = [
+      [T.complaint, !!val("f-chief_complaint"), T.empty],
+      [T.exam, !!val("f-examination"), T.empty],
+      [T.dx, !!val("f-diagnosis"), T.empty],
+    ];
+    if (rx) rows.push([T.rx, rx.items > 0, T.noRx, rx.items > 0 ? (rx.status === "draft" ? `${rx.items} · ${T.rxDraft}` : T.rxFinal) : ""]);
+    rows.push([T.fu, !!fu, T.noFu, fu ? `${T.days} ${fu} ${T.dayUnit}` : ""]);
+    document.getElementById("finish-checks").innerHTML = rows.map(([label, ok, missing, extra]) =>
+      `<li class="flex gap-2 ${ok ? "text-stone-700" : "text-amber-700"}"><span>${ok ? "✓" : "⚠"}</span><span class="font-semibold">${label}</span><span class="text-stone-500">${ok ? (extra || "") : missing}</span></li>`).join("");
+    document.getElementById("finish-error").classList.add("hidden");
+    document.getElementById("finish-go").textContent = rx && rx.items > 0 ? T.finishPrint : T.finish;
+    document.getElementById("finish-dialog").showModal();
+  };
+  window.doFinish = () => {
+    const rx = rxState();
+    const finish = () => htmx.trigger("#finish-form", "submit");
+    if (rx && rx.items > 0 && rx.status === "draft") {
+      const form = document.getElementById("rx-finalize");
+      document.body.addEventListener("htmx:afterSettle", function once(e) {
+        if (e.detail.target?.id !== "rx-builder") return;
+        document.body.removeEventListener("htmx:afterSettle", once);
+        const after = rxState();
+        if (after && after.status === "final") { finish(); return; }  // the builder's response already opened print
+        const err = document.getElementById("finish-error");
+        err.textContent = T.rxBlocked;
+        err.classList.remove("hidden");
+        document.getElementById("pane-rx")?.scrollIntoView({ behavior: "smooth" });
+      });
+      htmx.trigger(form, "submit");
+      return;
+    }
+    if (rx && rx.items > 0 && rx.status === "final" && window.printRx) window.printRx(rx.pdf);
+    finish();
+  };
+  document.body.addEventListener("htmx:afterSwap", (e) => {
+    if (e.detail.target.id === "workspace") {
+      document.getElementById("finish-dialog").close();
+      document.getElementById("action-bar")?.remove();
+      document.getElementById("snapshot")?.remove();
+    }
+  });
+
+  // Keyboard: "/" → drug search · Ctrl+Enter → finish · Esc → close the drawer (Ctrl+Space = the mic).
+  document.addEventListener("keydown", (e) => {
+    const typing = e.target.closest?.("input, textarea, select, [contenteditable]");
+    if (e.key === "/" && !typing) {
+      const s = document.getElementById("rx-search");
+      if (s) { e.preventDefault(); s.focus(); s.scrollIntoView({ block: "center" }); }
+    } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && typeof finishVisit === "function" && document.getElementById("finish-form")) {
+      e.preventDefault();
+      finishVisit();
+    } else if (e.key === "Escape") {
+      closeDrawer();
+    }
+  });
 </script>
 {% endblock %}

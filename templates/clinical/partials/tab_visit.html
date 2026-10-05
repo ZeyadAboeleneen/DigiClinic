@@ -1,33 +1,26 @@
 {% load i18n %}
 {% url 'clinical:visit_field' visit.pk as field_url %}
-<div class="card space-y-4 p-4 sm:p-6" id="visit-form" data-url="{{ field_url }}">
+<div class="space-y-3" id="visit-form" data-url="{{ field_url }}">
   <div class="flex items-center justify-between text-xs">
-    <span class="text-stone-500">{% if visit.status == "finished" %}{% translate "الكشف خلص — التعديلات بتتسجل في السجل" %}{% else %}{% translate "بيتحفظ تلقائي" %}{% endif %}</span>
+    <span class="font-semibold text-stone-500">{% translate "الكشف" %} · {% if visit.status == "finished" %}{% translate "الكشف خلص — التعديلات بتتسجل في السجل" %}{% else %}{% translate "بيتحفظ تلقائي" %}{% endif %}</span>
     <span id="save-status" class="text-stone-400"></span>
   </div>
   {% with editable=can.clinical_edit %}
-  <div class="grid gap-4 lg:grid-cols-2">
-  {% include "clinical/partials/visit_text.html" with name="chief_complaint" label=_("الشكوى") value=visit.chief_complaint rows=3 %}
-  {% include "clinical/partials/visit_text.html" with name="history" label=_("التاريخ المرضي") value=visit.history rows=3 %}
-  </div>
-  {% include "clinical/partials/visit_text.html" with name="examination" label=_("الفحص") value=visit.examination rows=4 %}
-  {% include "clinical/partials/visit_text.html" with name="diagnosis" label=_("التشخيص") value=visit.diagnosis rows=2 list="diagnosis-list" %}
+  {% include "clinical/partials/visit_text.html" with name="chief_complaint" label=_("الشكوى") value=visit.chief_complaint rows=2 chips=phrases.chief_complaint %}
+  <details class="group" {% if visit.history %}open{% endif %}>
+    <summary class="cursor-pointer text-xs font-semibold text-stone-500 group-open:mb-1">{% translate "التاريخ المرضي" %}{% if not visit.history %} +{% endif %}</summary>
+    {% include "clinical/partials/visit_text.html" with name="history" label="" value=visit.history rows=2 %}
+  </details>
+  {% include "clinical/partials/visit_text.html" with name="examination" label=_("الفحص") value=visit.examination rows=3 chips=phrases.examination %}
+  {% include "clinical/partials/visit_text.html" with name="diagnosis" label=_("التشخيص") value=visit.diagnosis rows=2 list="diagnosis-list" chips=diagnoses|slice:":8" %}
   <datalist id="diagnosis-list">{% for d in diagnoses %}<option value="{{ d }}">{% endfor %}</datalist>
-  {% if diagnoses %}
-  <div class="-mt-2 flex flex-wrap gap-1">
-    {% for d in diagnoses|slice:":12" %}
-    <button type="button" class="rounded-md border border-stone-200 bg-stone-50 px-2 py-0.5 text-xs hover:bg-stone-100" {% if not editable %}disabled{% endif %}
-            data-dx="{{ d }}" onclick="addDiagnosis(this.dataset.dx)">{{ d }}</button>
-    {% endfor %}
-  </div>
-  {% endif %}
-  <div class="grid gap-4 lg:grid-cols-2">
-  {% include "clinical/partials/visit_text.html" with name="plan" label=_("الخطة") value=visit.plan rows=3 %}
-  {% include "clinical/partials/visit_text.html" with name="notes" label=_("ملاحظات") value=visit.notes rows=3 %}
+  <div class="grid gap-3 xl:grid-cols-2">
+  {% include "clinical/partials/visit_text.html" with name="plan" label=_("الخطة") value=visit.plan rows=2 %}
+  {% include "clinical/partials/visit_text.html" with name="notes" label=_("ملاحظات") value=visit.notes rows=2 chips=phrases.notes %}
   </div>
 
   {% if custom %}
-  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  <div class="grid gap-3 sm:grid-cols-2">
     {% for name, d, value in custom %}
     <div class="form-field">
       <label for="f-{{ name }}">{{ d.label_ar }}</label>
@@ -46,24 +39,23 @@
   </div>
   {% endif %}
 
-  <div class="form-field max-w-xs">
-    <label for="f-followup">{% translate "إعادة بعد (يوم)" %}</label>
-    <input id="f-followup" type="number" min="1" max="730" name="value" data-field="followup_after_days" class="autosave" dir="ltr"
-           value="{{ visit.followup_after_days|default_if_none:'' }}" {% if not editable %}disabled{% endif %}>
+  {# Follow-up: one tap; the number of days stays editable. Reception books it from "إعادات محتاجة حجز". #}
+  <div id="followup" class="rounded-lg bg-stone-50 px-3 py-2">
+    <div class="flex flex-wrap items-center gap-2">
+      <label for="f-followup" class="text-xs font-semibold text-stone-600">{% translate "الإعادة" %}</label>
+      {% for days, label in followup_choices %}
+      <button type="button" class="fu-chip rounded-full border px-3 py-1 text-xs pointer-coarse:px-4 pointer-coarse:py-2 {% if visit.followup_after_days == days %}border-brand bg-brand text-white{% else %}border-stone-300 bg-white{% endif %}"
+              data-days="{{ days }}" {% if not editable %}disabled{% endif %}>{{ label }}</button>
+      {% endfor %}
+      <span class="flex items-center gap-1 text-xs text-stone-500">
+        <input id="f-followup" type="number" min="1" max="730" name="value" data-field="followup_after_days" class="autosave w-16 rounded-md border border-stone-300 px-2 py-1 text-center" dir="ltr"
+               value="{{ visit.followup_after_days|default_if_none:'' }}" {% if not editable %}disabled{% endif %}> {% translate "يوم" %}
+      </span>
+      <span id="followup-date" class="text-xs font-semibold text-stone-600" data-base="{{ followup_base|date:'Y-m-d' }}"></span>
+      <button type="button" class="fu-chip text-xs text-stone-400 underline" data-days="" {% if not editable %}disabled{% endif %}>{% translate "مفيش" %}</button>
+    </div>
   </div>
   {% endwith %}
-
-  {% if can.clinical_edit and visit.status != "finished" %}
-  <div class="flex flex-wrap justify-end gap-2 border-t border-stone-100 pt-4">
-    <form method="post" action="{% url 'clinical:visit_finish' visit.pk %}" onsubmit="return flushAll()">{% csrf_token %}
-      <button class="btn-secondary">{% translate "إنهاء الكشف" %}</button>
-    </form>
-    <form method="post" action="{% url 'clinical:visit_finish' visit.pk %}" onsubmit="return flushAll()">{% csrf_token %}
-      <input type="hidden" name="next" value="1">
-      <button class="btn-primary">{% translate "إنهاء الكشف واستدعاء التالي" %}</button>
-    </form>
-  </div>
-  {% endif %}
 </div>
 
 <script>
@@ -128,12 +120,56 @@
       if (document.visibilityState === "hidden") dirty.forEach((el) => save(el, true));
     });
 
+    // Waits for every pending save (used before finishing the visit, so the summary and the record match).
     window.flushAll = () => { dirty.forEach((el) => save(el, true)); return true; };
-    window.addDiagnosis = (text) => {
-      const ta = document.getElementById("f-diagnosis");
-      ta.value = ta.value.trim() ? ta.value.trim() + "، " + text : text;
-      draft.set("diagnosis", ta.value);
-      save(ta);
+    window.flushVisit = () => Promise.all([...dirty.values()].map((el) => save(el)));
+
+    // Quick phrases / diagnosis chips: insert at the cursor (or append), never replace what's written.
+    box.addEventListener("click", (e) => {
+      const chip = e.target.closest("[data-insert]");
+      if (!chip) return;
+      const el = document.getElementById("f-" + chip.dataset.insert);
+      if (!el || el.disabled) return;
+      const text = chip.dataset.text;
+      const start = el.selectionStart ?? el.value.length;
+      const end = el.selectionEnd ?? el.value.length;
+      const before = el.value.slice(0, start).trimEnd();
+      const after = el.value.slice(end);
+      const glue = before ? "، " : "";
+      el.value = before + glue + text + after;
+      const pos = (before + glue + text).length;
+      el.focus();
+      try { el.setSelectionRange(pos, pos); } catch (err) { /* not a text field */ }
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    // Follow-up chips → days field (autosaved) + the date it lands on.
+    const fu = document.getElementById("f-followup");
+    const fuDate = document.getElementById("followup-date");
+    const showDate = () => {
+      const n = parseInt(fu.value, 10);
+      if (!n || !fuDate.dataset.base) { fuDate.textContent = ""; return; }
+      const d = new Date(fuDate.dataset.base + "T12:00:00");
+      d.setDate(d.getDate() + n);
+      fuDate.textContent = "← " + d.toLocaleDateString("ar-EG", { weekday: "long", day: "numeric", month: "numeric", year: "numeric" });
     };
+    const markChips = () => box.querySelectorAll(".fu-chip").forEach((c) => {
+      if (!c.dataset.days) return;
+      const on = c.dataset.days === fu.value;
+      c.classList.toggle("bg-brand", on);
+      c.classList.toggle("text-white", on);
+      c.classList.toggle("border-brand", on);
+      c.classList.toggle("bg-white", !on);
+    });
+    box.addEventListener("click", (e) => {
+      const chip = e.target.closest(".fu-chip");
+      if (!chip || chip.disabled) return;
+      fu.value = chip.dataset.days;
+      save(fu);
+      showDate();
+      markChips();
+    });
+    fu.addEventListener("input", () => { showDate(); markChips(); });
+    showDate();
   })();
 </script>

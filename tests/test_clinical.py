@@ -132,7 +132,7 @@ def test_editing_a_finished_visit_keeps_history(world):
 def _clinical_urls(world, visit, attachment):
     from apps.clinical import urls as clinical_urls
 
-    post_only = {"lock", "unlock", "call", "visit_field", "visit_finish"}
+    post_only = {"lock", "unlock", "call", "visit_field", "visit_finish", "visit_reuse"}
     out = []
     for pattern in clinical_urls.urlpatterns:
         if pattern.name == "attachment_upload":

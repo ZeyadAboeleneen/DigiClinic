@@ -1,0 +1,7 @@
+{% load i18n %}
+<div class="flex flex-col items-center gap-4 py-16 text-center">
+  <p class="text-2xl font-bold text-green-700">✓ {% translate "الكشف خلص" %}</p>
+  <p class="text-sm text-stone-500">{{ visit.patient.full_name }}{% if visit.followup_after_days %} · {% blocktranslate with n=visit.followup_after_days %}إعادة بعد {{ n }} يوم — الاستقبال هيحجزها{% endblocktranslate %}{% endif %}</p>
+  {% include "clinical/partials/next_patient.html" %}
+  <a href="{% url 'clinical:visit' visit.pk %}" class="text-xs text-stone-400 underline">{% translate "رجوع للزيارة" %}</a>
+</div>

@@ -344,3 +344,26 @@ gotchas and conventions introduced in that phase.
   ("كونكور5"), compound numbers ("ميتين وخمسين"), number ≥ 20 after a name = strength, number + مل/نقط = dose,
   `NEGATIONS` before a name drop it ("بلاش البنادول"), `CORRECTIONS` after it drop it ("لا قصدي"), `TYPES` near the
   name pick the form, `VARIANT_WORDS` (PLUS/XR…) only when said, repeated phrases written once.
+
+## Doctor workspace (visit page redesign)
+- `/desk/visits/<pk>/` is one workspace: sticky compact header (allergies always red), `snapshot.html` (last visit,
+  last prescription, latest readings, "اتغير من الزيارة اللي فاتت"), the visit form and the prescription builder side by
+  side (builder loads with `hx-trigger="load"`), a fixed action bar, and a drawer (`openDrawer(url, title)`) for history/
+  prescriptions/attachments/data/a previous visit. Nothing navigates away while a visit is open.
+- `apps/clinical/workspace.py` (read-only summaries + `reuse`): `previous_visit`, `snapshot`, `changes_since` (only values
+  recorded in both visits; never inferred), `quick_phrases` (doctor's own ≥2-use segments, topped up with neutral
+  `DEFAULT_PHRASES`), `reuse(visit, source, fields)` (empty field → filled, written field → old text appended, prescription
+  → `rx_services.repeat_from` which skips drugs already there). No schema changes.
+- New URLs: `clinical:visit_compare` (drawer: previous vs current + reuse checkboxes), `clinical:visit_reuse` (POST →
+  `HX-Refresh`), `clinical:poll` (5 s "مريض جديد جاهز" after finishing). `visit_finish` with `HX-Request` finishes in place
+  (renders `finished.html`) so the print iframe survives; without HTMX it still redirects as before.
+- Finish flow (`finishVisit()` in `visit.html`): flush autosave → ✓/⚠ summary (never blocks) → if the draft prescription
+  has lines, submit `#rx-finalize` and continue only when `#rx-builder[data-status]` turns `final` (warnings/voice lines
+  still need the doctor) → finish. Shortcuts: `/` drug search, Ctrl+Enter finish, Esc closes the drawer.
+- Prescription: `rx_services.current_for_visit` (moved from the view), `recent_for_patient` ("أدوية المريض" chips carry the
+  patient's previous line), `favorites_for_doctor` (≥2 uses, latest dose), `last_usage` (picking a drug fills the doctor's
+  own last dose/duration before the catalog default). Dose/frequency stay one "الجرعة" field (`instructions`) — splitting
+  them would need a migration and every PDF/template/voice path changed.
+- Diagnosis autocomplete = the doctor's own diagnoses, most used first (`diagnosis_suggestions`), free text kept.
+- Tablet: `pointer-coarse:` variants enlarge chips/checkboxes; below `lg` the panes stack and the action bar gets
+  "الكشف / الروشتة" jump links.

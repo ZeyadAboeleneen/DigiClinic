@@ -13,7 +13,10 @@
       <span class="font-mono text-xs" dir="ltr">{{ v.created_at|date:"Y-m-d" }}</span>
       <span class="badge bg-stone-100 text-stone-600">{{ v.appointment.visit_type.name_ar }}</span>
       {% if v.status == "open" %}<span class="badge bg-sky-50 text-sky-700">{% translate "مفتوحة" %}</span>{% endif %}
-      {% if can.clinical_view %}<a href="{% url 'clinical:visit' v.pk %}" class="ms-auto text-xs font-semibold text-brand">{% translate "فتح" %}</a>{% endif %}
+      {% if current_visit and v.pk != current_visit %}
+      <button type="button" class="ms-auto text-xs font-semibold text-brand pointer-coarse:py-1" hx-get="{% url 'clinical:visit_compare' current_visit v.pk %}" hx-target="#drawer-body">{% translate "عرض ومقارنة" %}</button>
+      {% elif can.clinical_view and v.pk != current_visit %}<a href="{% url 'clinical:visit' v.pk %}" class="ms-auto text-xs font-semibold text-brand">{% translate "فتح" %}</a>{% endif %}
+      {% if v.pk == current_visit %}<span class="ms-auto text-xs text-stone-400">{% translate "الزيارة الحالية" %}</span>{% endif %}
     </div>
     {% if v.diagnosis %}<p><span class="text-stone-500">{% translate "التشخيص" %}:</span> <bdi dir="auto">{{ v.diagnosis }}</bdi></p>{% endif %}
     {% if v.chief_complaint %}<p class="text-stone-600"><span class="text-stone-500">{% translate "الشكوى" %}:</span> <bdi dir="auto">{{ v.chief_complaint|truncatechars:160 }}</bdi></p>{% endif %}

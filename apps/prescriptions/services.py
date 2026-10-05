@@ -179,6 +179,77 @@ def apply_template(rx, tpl):
     PrescriptionTemplate.objects.filter(pk=tpl.pk).update(usage_count=F("usage_count") + 1)
 
 
+def current_for_visit(visit):
+    """The prescription the visit's builder shows: its draft, else its latest final one, else a new draft."""
+    draft = Prescription.objects.filter(visit=visit, status=RxStatus.DRAFT).order_by("-created_at").first()
+    if draft:
+        return draft
+    final = Prescription.objects.filter(visit=visit, status=RxStatus.FINAL).order_by("-issued_at").first()
+    return final or draft_for_visit(visit)
+
+
+def repeat_from(rx, source):
+    """Add `source`'s lines (a final prescription of the same patient) to this draft, skipping drugs already there."""
+    _require_draft(rx)
+    have = {(it.drug_id, it.drug_name.strip().lower()) for it in rx.items.all()}
+    for it in source.items.all():
+        if (it.drug_id, it.drug_name.strip().lower()) in have:
+            continue
+        add_item(rx, drug=it.drug, drug_name=it.drug_name, instructions=it.instructions, duration=it.duration,
+                 form=it.form)  # fmt: skip
+    if source.advice and not rx.advice:
+        update_fields(rx, advice=source.advice)
+    return source
+
+
+def recent_for_patient(patient, *, exclude_rx=None, limit=8):
+    """The patient's medicines from their final prescriptions, newest first, one per drug, with how they were taken."""
+    items = (
+        PrescriptionItem.objects.filter(prescription__patient=patient, prescription__status=RxStatus.FINAL)
+        .exclude(prescription=exclude_rx)
+        .select_related("drug")
+        .order_by("-prescription__issued_at", "order")[:200]
+    )
+    seen, out = set(), []
+    for it in items:
+        key = it.drug_id or it.drug_name.strip().lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(it)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def favorites_for_doctor(doctor, *, limit=10):
+    """The doctor's most prescribed catalog drugs (final prescriptions), each with the doctor's latest dose/duration."""
+    from django.db.models import Count
+
+    top = (
+        PrescriptionItem.objects.filter(prescription__doctor=doctor, prescription__status=RxStatus.FINAL)
+        .exclude(drug=None)
+        .values("drug")
+        .annotate(n=Count("id"))
+        .order_by("-n")[:limit]
+    )
+    ids = [row["drug"] for row in top if row["n"] >= 2]
+    usage = {pk: last_usage(doctor, pk) for pk in ids}
+    return [usage[pk] for pk in ids if usage[pk] is not None]
+
+
+def last_usage(doctor, drug_id):
+    """How this doctor last prescribed this drug (the item), or None — used as the line's default dose/duration."""
+    return (
+        PrescriptionItem.objects.filter(
+            prescription__doctor=doctor, prescription__status=RxStatus.FINAL, drug_id=drug_id
+        )
+        .select_related("drug")
+        .order_by("-prescription__issued_at")
+        .first()
+    )
+
+
 def repeat_last(rx):
     """Copy the patient's last final prescription into this draft."""
     _require_draft(rx)
