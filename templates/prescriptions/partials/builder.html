@@ -43,7 +43,7 @@
     <input type="hidden" id="rx-category" name="category" value="">
     <div class="dictate-inline relative flex-1">
       <input id="rx-search" name="drug_name" autocomplete="off" dir="auto"
-             data-dictate="rx" data-dictate-url="{% url 'prescriptions:dictate' rx.pk %}" data-dictate-target="#rx-dictation" placeholder="{% translate 'ابحث أو اكتب اسم الدوا…  ( / )' %}"
+             data-dictate="rx" data-dictate-url="{% url 'prescriptions:dictate' rx.pk %}" data-dictate-target="#rx-dictation" placeholder="{% translate 'ابحث أو اكتب اسم الدوا… (اختصار: /)' %}"
              class="w-full rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm shadow-sm focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
              hx-get="{% url 'prescriptions:drug_search' rx.pk %}" hx-trigger="input changed delay:150ms" hx-target="#drug-results"
              hx-swap="innerHTML" {# explicit: the enclosing form's outerHTML swap must not be inherited #}

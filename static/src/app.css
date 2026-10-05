@@ -74,9 +74,12 @@
 
   /* voice mic inside the field (not under it, not over the text) */
   .dictate-inline, .dictate-corner { position: relative; }
-  .dictate-inline > input { padding-inline-end: 4.5rem !important; }
+  /* the mic sits on the left (RTL page): keep that side free whatever the text direction; an empty field (hint) reads
+     right-to-left, typed English still switches to left-to-right (dir=auto) */
+  .dictate-inline > input { padding-left: 4.75rem !important; padding-right: .9rem !important; }
+  .dictate-inline > input:placeholder-shown { direction: rtl; text-align: right; }
   .dictate-inline > .dictation-bar, .dictate-corner > .dictation-bar { z-index: 5; }
-  .dictate-inline > .dictation-bar { position: absolute; inset-inline-end: .4rem; top: 50%; transform: translateY(-50%); margin-top: 0 !important; }
+  .dictate-inline > .dictation-bar { position: absolute; left: .4rem; top: 50%; transform: translateY(-50%); margin-top: 0 !important; }
   /* what's being heard / why the mic stopped: a small note under the field */
   .dictate-inline .dictation-interim { position: absolute; top: calc(100% + .55rem); inset-inline-end: 0; max-width: 22rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: .375rem; background: #fff; padding: .1rem .5rem; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
   .dictate-inline .dictation-interim:empty { display: none; }
