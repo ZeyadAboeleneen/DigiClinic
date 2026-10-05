@@ -291,3 +291,12 @@ def test_english_names_said_in_arabic(org):
     Drug.objects.create(organization=org, name="A1 CREAM 50 GM")
     [item] = extraction.extract(org, "وكريم اي 1 بالليل")  # the browser often writes "ون" as the digit
     assert item.candidates[0].drug.name == "A1 CREAM 50 GM"
+
+
+def test_misheard_letters_and_plain_variant_first(org):
+    from apps.prescriptions import extraction
+
+    Drug.objects.create(organization=org, name="ALKOR PLUS 10/40MG 14 TAB", aliases_ar=["الكور بلوس 10/"])
+    Drug.objects.create(organization=org, name="ALKOR 10 MG 14 F.C. TABS.", aliases_ar=["الكور"])
+    [item] = extraction.extract(org, "وهكتب لك الكول 10 مليجرام ده تاخديه مرتين")  # ر heard as ل
+    assert (item.candidates[0].drug.name, item.instructions) == ("ALKOR 10 MG 14 F.C. TABS.", "مرتين")

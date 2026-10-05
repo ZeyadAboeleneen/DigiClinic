@@ -97,6 +97,23 @@ SPOKEN_EN = {normalize(k): v for k, v in {
     "بيبي": "baby", "جونيور": "junior", "ميني": "mini", "دوبل": "double", "سوبر": "super", "نايت": "night",
     "داي": "day", "كولد": "cold", "فلو": "flu", "كير": "care", "هير": "hair", "سكين": "skin",
 }.items()}  # fmt: skip
+# Letters Arabic speech recognition confuses with each other → one "sound" letter.
+_SOUNDS = str.maketrans("رصطضذظقحثغ", "لستدززكهسخ")
+SOUND_PENALTY = 7  # a 100% sound match = 93 (still "strong"), a weaker one needs a dose after it
+
+
+def _sound(text: str) -> str:
+    return text.translate(_SOUNDS)
+
+
+def _sound_heads(idx, n: int) -> list[str]:
+    cache = idx.__dict__.setdefault("sound_heads", {})
+    if n not in cache:
+        cache[n] = [_sound(h) for h in idx.heads[n]]
+    return cache[n]
+
+
+VARIANT_WORDS = {"plus", "extra", "forte", "xr", "sr", "cr", "max", "duo", "co", "mr", "xl", "la"}
 DIGIT_WORDS = {"1": "one", "2": "two", "3": "three", "4": "four", "5": "five"}
 
 
@@ -227,13 +244,16 @@ def extract(org, transcript: str) -> list[Extracted]:
         queries = [" ".join(bare[i : i + n]) for i in starts]
         scores = process.cdist(queries, idx.heads[n], scorer=fuzz.ratio, score_cutoff=WEAK, dtype=np.uint8,
                                workers=-1) if queries else []  # fmt: skip
-        for row, i in zip(scores, starts, strict=True):
-            hits = np.nonzero(row)[0]
-            if len(hits):
-                best = {}
-                for h in hits:
-                    pk = owners[h]
-                    best[pk] = max(best.get(pk, 0), int(row[h]))
+        # letters speech recognition mixes up (الكول/الكور): a match on the "sound" scores a bit lower than an exact one
+        phon = process.cdist([_sound(q) for q in queries], _sound_heads(idx, n), scorer=fuzz.ratio,
+                             score_cutoff=STRONG, dtype=np.uint8, workers=-1) if queries else []  # fmt: skip
+        for row, prow, i in zip(scores, phon, starts, strict=True):
+            best = {}
+            for h in np.nonzero(row)[0]:
+                best[owners[h]] = max(best.get(owners[h], 0), int(row[h]))
+            for h in np.nonzero(prow)[0]:
+                best[owners[h]] = max(best.get(owners[h], 0), int(prow[h]) - SOUND_PENALTY)
+            if best:
                 windows[(i, n)] = sorted(((s, pk) for pk, s in best.items()), reverse=True)
 
         # the same window heard as spoken English ("اي ون" / "اي 1" → "a one" / "a1"), when every word is a known
@@ -299,13 +319,15 @@ def extract(org, transcript: str) -> list[Extracted]:
             b_ins, b_dur = regimen(norm[max(0, i - 12) : i])
             ins, dur = ins or b_ins, dur or b_dur
 
+        said_en = {SPOKEN_EN.get(w, w) for w in norm[i:j]}  # "الكور" alone → ALKOR, not ALKOR PLUS
         kinds = {TYPES[w] for w in norm[max(0, i - 1) : i] + norm[j : j + 1] if w in TYPES}  # "صابونه اي ون"
 
-        def rank(sp, strength=strength, kinds=kinds):
+        def rank(sp, strength=strength, kinds=kinds, said_en=said_en):
             score, pk = sp
             name = names.get(pk, "").lower()
             has = bool(strength) and strength in re.findall(r"\d+(?:\.\d+)?", name)
-            return (-score, not any(k in name for k in kinds), not has, -idx.usage[pk], idx.name_len[pk])
+            unsaid = any(w in VARIANT_WORDS and w not in said_en for w in re.split(r"[^a-z]+", name))
+            return (-score, not any(k in name for k in kinds), not has, unsaid, -idx.usage[pk], idx.name_len[pk])
 
         ranked = sorted(hits, key=rank)[:TOP_N]
         spoken = " ".join(tokens[i:j])
