@@ -6,15 +6,19 @@
     <span id="save-status" class="ms-auto text-xs font-normal text-stone-400"></span>
   </h2>
   {% with editable=can.clinical_edit %}
-  {% include "clinical/partials/visit_text.html" with name="chief_complaint" label=_("الشكوى") value=visit.chief_complaint rows=2 chips=phrases.chief_complaint %}
+  <div class="grid gap-x-6 gap-y-3 lg:grid-cols-2">
+  <div class="space-y-3">
+  {% include "clinical/partials/visit_text.html" with name="chief_complaint" label=_("الشكوى") value=visit.chief_complaint rows=3 chips=phrases.chief_complaint %}
   <details class="group" {% if visit.history %}open{% endif %}>
     <summary class="cursor-pointer text-xs font-semibold text-stone-500 group-open:mb-1">{% translate "التاريخ المرضي" %}{% if not visit.history %} +{% endif %}</summary>
     {% include "clinical/partials/visit_text.html" with name="history" label="" value=visit.history rows=2 %}
   </details>
+  </div>
   {% include "clinical/partials/visit_text.html" with name="examination" label=_("الفحص") value=visit.examination rows=3 chips=phrases.examination %}
+  </div>
   {% include "clinical/partials/visit_text.html" with name="diagnosis" label=_("التشخيص") value=visit.diagnosis rows=2 list="diagnosis-list" chips=diagnoses|slice:":8" %}
   <datalist id="diagnosis-list">{% for d in diagnoses %}<option value="{{ d }}">{% endfor %}</datalist>
-  <div class="grid gap-3 xl:grid-cols-2">
+  <div class="grid gap-x-6 gap-y-3 lg:grid-cols-2">
   {% include "clinical/partials/visit_text.html" with name="plan" label=_("الخطة") value=visit.plan rows=2 %}
   {% include "clinical/partials/visit_text.html" with name="notes" label=_("ملاحظات") value=visit.notes rows=2 chips=phrases.notes %}
   </div>

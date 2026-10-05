@@ -9,12 +9,20 @@ in a drawer over the page, so the visit being written is never left (or reloaded
 {% include "clinical/partials/snapshot.html" %}
 
 <div id="workspace" class="pb-24">
-  <div class="grid items-start gap-4 {% if can.prescription_write %}lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]{% endif %}">
+  {% if can.prescription_write %}
+  {# Two full-width tabs: the visit, and the prescription on its own (room for the categories and the lines). #}
+  <div id="pane-switch" class="mb-3 flex gap-2" role="tablist">
+    <button type="button" role="tab" data-pane="visit" class="pane-tab flex-1 rounded-xl border-2 border-brand bg-white px-4 py-3 text-base font-bold text-brand shadow-sm sm:flex-none sm:px-8">📝 {% translate "الكشف" %}</button>
+    <button type="button" role="tab" data-pane="rx" class="pane-tab flex-1 rounded-xl border-2 border-transparent bg-white/60 px-4 py-3 text-base font-bold text-stone-500 hover:bg-white sm:flex-none sm:px-8">💊 {% translate "الروشتة" %} <span id="rx-count" class="ms-1 rounded-full bg-stone-200 px-2 text-xs text-stone-600 empty:hidden"></span></button>
+    <span class="ms-auto hidden self-center text-xs text-stone-400 lg:inline">{% translate "/ للروشتة" %}</span>
+  </div>
+  {% endif %}
+  <div>
     <section id="pane-visit" class="ws-panel min-w-0 scroll-mt-28">
       {% include "clinical/partials/tab_visit.html" %}
     </section>
     {% if can.prescription_write %}
-    <section id="pane-rx" class="ws-panel min-w-0 scroll-mt-28 max-lg:hidden">
+    <section id="pane-rx" class="ws-panel hidden min-w-0 scroll-mt-28">
       <div id="rx-dictation" class="mb-3 empty:hidden"></div>
       <div hx-get="{% url 'prescriptions:builder' visit.pk %}" hx-trigger="load" hx-swap="outerHTML">
         <p class="py-8 text-center text-sm text-stone-400">{% translate "بيحمّل الروشتة..." %}</p>
@@ -27,13 +35,6 @@ in a drawer over the page, so the visit being written is never left (or reloaded
 {# --- action bar: file on one side, the visit's final actions on the other --- #}
 <div id="action-bar" class="fixed inset-x-0 bottom-0 z-30 border-t border-stone-200 bg-white/95 shadow-[0_-4px_16px_-8px_rgba(0,0,0,.12)] backdrop-blur lg:start-64">
   <div class="flex items-center gap-1 px-3 py-2 text-sm lg:px-8">
-    {% if can.prescription_write %}
-    {# tablet/phone: switch between the two panes instead of scrolling between them #}
-    <div class="me-2 flex rounded-lg bg-stone-100 p-0.5 lg:hidden" id="pane-switch">
-      <button type="button" class="rounded-md bg-white px-4 py-2 font-semibold shadow-sm" data-pane="visit">{% translate "الكشف" %}</button>
-      <button type="button" class="rounded-md px-4 py-2 font-semibold text-stone-500" data-pane="rx">{% translate "الروشتة" %}</button>
-    </div>
-    {% endif %}
     <div class="flex min-w-0 items-center gap-0.5 overflow-x-auto">
       <button type="button" class="btn-ghost whitespace-nowrap px-3" data-drawer="{% url 'clinical:history' patient.pk %}?visit={{ visit.pk }}">🗂 {% translate "التاريخ" %}</button>
       {% if can.prescription_write %}<button type="button" class="btn-ghost whitespace-nowrap px-3" data-drawer="{% url 'prescriptions:patient_list' patient.pk %}">💊 {% translate "الروشتات" %}</button>{% endif %}
@@ -115,18 +116,31 @@ in a drawer over the page, so the visit being written is never left (or reloaded
       t.classList.toggle("border-brand", on); t.classList.toggle("text-brand", on); t.classList.toggle("text-stone-500", !on);
     });
   });
-  // Tablet/phone: "الكشف | الروشتة" switch shows one pane at a time (both stay in the page — nothing is lost).
+  // "الكشف | الروشتة" tabs: one full-width pane at a time. Both stay in the page (hidden, never reloaded), so
+  // nothing typed is lost; the chosen tab is remembered for this visit.
+  const paneKey = "visit-pane:{{ visit.pk }}";
+  window.showPane = (name) => {
+    const rx = name === "rx" && document.getElementById("pane-rx");
+    document.getElementById("pane-rx")?.classList.toggle("hidden", !rx);
+    document.getElementById("pane-visit").classList.toggle("hidden", !!rx);
+    document.querySelectorAll("#pane-switch [data-pane]").forEach((b) => {
+      const on = b.dataset.pane === (rx ? "rx" : "visit");
+      b.classList.toggle("border-brand", on); b.classList.toggle("text-brand", on); b.classList.toggle("bg-white", on);
+      b.classList.toggle("shadow-sm", on); b.classList.toggle("border-transparent", !on); b.classList.toggle("text-stone-500", !on);
+      b.setAttribute("aria-selected", on);
+    });
+    try { sessionStorage.setItem(paneKey, rx ? "rx" : "visit"); } catch (e) { /* ignore */ }
+  };
   document.getElementById("pane-switch")?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-pane]");
-    if (!btn) return;
-    const rx = btn.dataset.pane === "rx";
-    document.getElementById("pane-rx").classList.toggle("max-lg:hidden", !rx);
-    document.getElementById("pane-visit").classList.toggle("max-lg:hidden", rx);
-    document.querySelectorAll("#pane-switch [data-pane]").forEach((b) => {
-      const on = b === btn;
-      b.classList.toggle("bg-white", on); b.classList.toggle("shadow-sm", on); b.classList.toggle("text-stone-500", !on);
-    });
-    window.scrollTo({ top: 0 });
+    if (btn) showPane(btn.dataset.pane);
+  });
+  try { if (sessionStorage.getItem(paneKey) === "rx") showPane("rx"); } catch (e) { /* ignore */ }
+  // number of medicines on the "الروشتة" tab
+  document.body.addEventListener("htmx:afterSettle", () => {
+    const n = parseInt(document.getElementById("rx-builder")?.dataset.items || "0", 10);
+    const badge = document.getElementById("rx-count");
+    if (badge) badge.textContent = n ? n : "";
   });
   window.closeDrawer = () => {
     const d = document.getElementById("drawer");
@@ -172,7 +186,7 @@ in a drawer over the page, so the visit being written is never left (or reloaded
         const err = document.getElementById("finish-error");
         err.textContent = T.rxBlocked;
         err.classList.remove("hidden");
-        document.querySelector('#pane-switch [data-pane="rx"]')?.click();
+        showPane("rx");
         document.getElementById("pane-rx")?.scrollIntoView({ behavior: "smooth" });
       });
       htmx.trigger(form, "submit");
@@ -196,7 +210,7 @@ in a drawer over the page, so the visit being written is never left (or reloaded
       const s = document.getElementById("rx-search");
       if (s) {
         e.preventDefault();
-        document.querySelector('#pane-switch [data-pane="rx"]')?.click();
+        showPane("rx");
         s.focus(); s.scrollIntoView({ block: "center" });
       }
     } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && typeof finishVisit === "function" && document.getElementById("finish-form")) {

@@ -372,4 +372,4 @@ gotchas and conventions introduced in that phase.
   (a Tailwind `@utility`, so other classes can `@apply` it) / `chip-soft`, `cat-tile` (drug categories as an equal
   grid of big tiles), `quiet-input` (prescription cells that look like text until hovered/focused). The voice mic sits
   **inside** fields: wrap an input in `.dictate-inline` or a textarea in `.dictate-corner`. Below `lg` the action bar's
-  "الكشف | الروشتة" switch shows one pane at a time (`max-lg:hidden`); the drawer has its own tabs (`[data-drawer]`).
+  ("الكشف" | "الروشتة") are two full-width tabs at the top (`showPane()`, remembered per visit in sessionStorage; `/` and a blocked finish switch to the prescription); the drawer has its own tabs (`[data-drawer]`).
