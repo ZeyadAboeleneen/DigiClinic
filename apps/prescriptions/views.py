@@ -262,6 +262,8 @@ def rx_action(request, pk, action):
 def item_to_catalog(request, item_pk):
     """ "ضيفه للكتالوج" for a free-typed line."""
     item = _item(request, item_pk)
+    if len(item.drug_name.split()) > 6:  # a whole sentence would become a "drug" the voice keeps matching
+        return _error(request, item.prescription, _("ده شكله جملة مش اسم دوا — اكتب الاسم بس قبل ما تضيفه للكتالوج."))
     drug, _created = Drug.objects.get_or_create(
         organization=request.organization,
         name=item.drug_name,

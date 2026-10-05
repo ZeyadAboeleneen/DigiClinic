@@ -49,6 +49,7 @@ STOPWORDS = set(
     في من على عن مع الي الى لحد لغايه بعد قبل لما لو اذا لان وبعدين بعدين يعني طبعا اصلا والله
     هو ايه ازاي ليه امتى فين مين كام ايوه لا مش مفيش فيه عندك عندي حاسس حاسه بيوجعك وجع الم
     مايه مايّه ميه مية مياه المايه الميه سوايل عصير عصاير شاي قهوه لبن اكل الاكل حاجه حاجات
+    ممكن حضرتك حضرتكم مثلا يعني اكتب اكتبلك اكتب لك ليك عليك علشانك هديك هتاخدي هتاخده جرب جربي
     اللي اللى دا دى ودي وده تيجي تيجى تاخديه تاخدها تاخده تستخدمي تستخدميه تستخدمه استخدم او ولا
     الصبح بالليل النهارده بكره امبارح يوم يومين ايام اسبوع شهر ساعه ساعات مره مرتين
     """.split()
@@ -381,13 +382,17 @@ def extract(org, transcript: str) -> list[Extracted]:
     # 2) choose non-overlapping mentions: strongest first, longer spoken names win ties; weak ones need a regimen
     chosen = []
     used = set()
+    strong_starts = sorted(i for (i, _n), hits in windows.items() if hits[0][0] >= STRONG)
     for (i, n), hits in sorted(windows.items(), key=lambda kv: (-kv[1][0][0], -kv[0][1], kv[0][0])):
         span = set(range(i, i + n))
         if span & used:
             continue
         top_score = hits[0][0]
         if top_score < STRONG:
-            ins, dur = regimen(norm[i + n : i + n + WEAK_LOOKAHEAD])
+            # the dose must come before the next clearly-named drug ("اكتب لك انتينال مرة كل يوم": that dose is
+            # Antinal's, it can't make "اكتب لك" count as a drug)
+            stop = next((s for s in strong_starts if s >= i + n), len(norm))
+            ins, dur = regimen(norm[i + n : min(stop, i + n + WEAK_LOOKAHEAD)])
             if not (ins or dur):
                 continue
         chosen.append((i, n, hits))

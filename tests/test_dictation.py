@@ -341,3 +341,12 @@ def test_future_phrasings(org, mini_catalog, talk, expected):
     for (names, ins, dur), (prefix, e_ins, e_dur) in zip(got, expected, strict=True):
         # a brand whose generic is the spoken name (Flumox ← "اموكسيسيلين") is a right answer too
         assert (names[0].startswith(prefix) or prefix in names[0]) and (ins, dur) == (e_ins, e_dur), got
+
+
+def test_filler_before_a_drug_does_not_borrow_its_dose(org):
+    from apps.prescriptions import extraction
+
+    Drug.objects.create(organization=org, name="ACT LIFE 20 CAPSULES", aliases_ar=["اكت ليفي"])
+    Drug.objects.create(organization=org, name="ANTINAL 200MG 24 CAPS.", aliases_ar=["انتينال"])
+    items = extraction.extract(org, "ممكن حضرتك وهكتب لك انتينال تاخديه مره كل يوم لمده 5 ايام")
+    assert [e.candidates[0].drug.name for e in items] == ["ANTINAL 200MG 24 CAPS."]
