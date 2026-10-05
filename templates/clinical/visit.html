@@ -23,7 +23,6 @@ in a drawer over the page, so the visit being written is never left (or reloaded
     </section>
     {% if can.prescription_write %}
     <section id="pane-rx" class="ws-panel hidden min-w-0 scroll-mt-28">
-      <div id="rx-dictation" class="mb-3 empty:hidden"></div>
       <div hx-get="{% url 'prescriptions:builder' visit.pk %}" hx-trigger="load" hx-swap="outerHTML">
         <p class="py-8 text-center text-sm text-stone-400">{% translate "بيحمّل الروشتة..." %}</p>
       </div>

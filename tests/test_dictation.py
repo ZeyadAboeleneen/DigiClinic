@@ -1,4 +1,5 @@
 import io
+import re
 from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -242,7 +243,8 @@ def test_conversation_keeps_only_medicines_dose_and_duration(client, desk, org):
     html = client.post(reverse("prescriptions:dictate", args=[rx.pk]), {"text": talk}).content.decode()
     assert "Flagyl 500" in html and "Panadol Extra" in html
     assert "لمدة أسبوع" in html and "عند اللزوم" in html
-    assert "سوايل" not in html.split("«")[0]  # the chit-chat is not offered as instructions
+    shown = re.sub(r'title="[^"]*"|«[^»]*»', "", html)  # drop the quoted speech (shown for reference only)
+    assert "سوايل" not in shown  # the chit-chat is not offered as instructions
     flagyl = Drug.objects.get(organization=org, name="Flagyl 500")
     client.post(reverse("prescriptions:dictate_add", args=[rx.pk]),
                 {"drug": flagyl.pk, "spoken": "فلاجيل", "instructions": "قرص 3 مرات يوميًا", "duration": "لمدة أسبوع"})  # fmt: skip  # noqa: E501

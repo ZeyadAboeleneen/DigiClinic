@@ -66,4 +66,24 @@
     document.addEventListener("htmx:afterSettle", restore);
     document.addEventListener("DOMContentLoaded", restore);
   })();
+  // Voice results box: a row added or dismissed disappears; the box closes with its last row.
+  window.rxDictationDone = (el) => {
+    const box = document.getElementById("dictation-box");
+    el.closest("[data-dictated-line]")?.remove();
+    if (box && !box.querySelector("[data-dictated-line]")) document.getElementById("rx-dictation").innerHTML = "";
+  };
+  // "أضف الكل": each row's best match, one after the other (each add re-renders the prescription).
+  window.rxAddAll = async (btn) => {
+    btn.disabled = true;
+    for (const row of [...document.querySelectorAll("#dictation-box [data-dictated-line]")]) {
+      const add = row.querySelector("[data-primary]");
+      if (!add) continue;
+      await htmx.ajax("POST", add.getAttribute("hx-post"), {
+        target: "#rx-builder", swap: "outerHTML", values: JSON.parse(add.getAttribute("hx-vals")),
+      });
+      row.remove();
+    }
+    const box = document.getElementById("rx-dictation");
+    if (box && !box.querySelector("[data-dictated-line]")) box.innerHTML = "";
+  };
 </script>

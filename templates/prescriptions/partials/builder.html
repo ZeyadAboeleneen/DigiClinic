@@ -58,6 +58,8 @@
             hx-post="{% url 'prescriptions:item_add' rx.pk %}" hx-include="#rx-search, #rx-category" hx-vals='{"free": "1"}'
             hx-target="#rx-builder" hx-swap="outerHTML">+ {% translate "إضافة" %}</button>
   </form>
+  {# voice results land here, right under the search; hx-preserve keeps them while lines are added one by one #}
+  <div id="rx-dictation" hx-preserve></div>
 
   {% if recent or favorites or templates %}
   {# One tap adds the drug the way it was given before (patient's line, else the doctor's own usual dose). #}
