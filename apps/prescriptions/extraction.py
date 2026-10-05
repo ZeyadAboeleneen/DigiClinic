@@ -34,7 +34,7 @@ FILLERS = {
     "ودي",
     "دا",
 }  # skipped inside a regimen  # minimum similarity; between WEAK and STRONG a dose/frequency/duration must follow
-LOOKAHEAD = 22  # words after a drug name searched for its regimen (cut at the next drug name)
+LOOKAHEAD = 45  # words after a drug name searched for its regimen (cut at the next drug name)
 MIN_CHARS = 4  # one-word mentions shorter than this are ignored ("كل", "ده"...)
 
 # Common words of a consultation that must never start a drug-name match.
@@ -48,6 +48,7 @@ STOPWORDS = set(
     علاج دوا دواء الدوا الروشته روشته التحاليل تحليل اشعه الاشعه الكشف الضغط السكر البرد الكحه الحراره
     في من على عن مع الي الى لحد لغايه بعد قبل لما لو اذا لان وبعدين بعدين يعني طبعا اصلا والله
     هو ايه ازاي ليه امتى فين مين كام ايوه لا مش مفيش فيه عندك عندي حاسس حاسه بيوجعك وجع الم
+    مايه مايّه ميه مية مياه المايه الميه سوايل عصير عصاير شاي قهوه لبن اكل الاكل حاجه حاجات
     اللي اللى دا دى ودي وده تيجي تيجى تاخديه تاخدها تاخده تستخدمي تستخدميه تستخدمه استخدم او ولا
     الصبح بالليل النهارده بكره امبارح يوم يومين ايام اسبوع شهر ساعه ساعات مره مرتين
     """.split()
@@ -123,6 +124,16 @@ def _pretty(phrase: str) -> str:
     return phrase
 
 
+def _join(phrases: list[str]) -> str:
+    """Said twice ("مرة كل يوم ... مرة كل يوم") → written once; a phrase inside a longer one is dropped too."""
+    kept: list[str] = []
+    for p in phrases:
+        if any(p in k for k in kept):
+            continue
+        kept = [k for k in kept if k not in p] + [p]
+    return " ".join(sorted(kept, key=phrases.index))
+
+
 def regimen(words: list[str]) -> tuple[str, str]:
     """(instructions, duration) found in these (normalized, numbers-converted) words, in spoken order."""
     text = " ".join(w for w in words if w not in FILLERS)
@@ -135,7 +146,7 @@ def regimen(words: list[str]) -> tuple[str, str]:
                 taken.append(span)
                 found.append((span[0], kind, " ".join(m.group().split())))
     found.sort()
-    instructions = " ".join(_pretty(p) for _s, kind, p in found if kind != "duration")
+    instructions = _join([_pretty(p) for _s, kind, p in found if kind != "duration"])
     durations = [_pretty(p) for _s, kind, p in found if kind == "duration"]
     duration = durations[0] if durations else ""
     duration = re.sub(r"^و?ل\w{1,4}\s+(?=\D)", "", duration)  # a misheard "لمدة" ("ولماضه") → shown as "لمدة"
@@ -227,6 +238,9 @@ def extract(org, transcript: str) -> list[Extracted]:
             j += 1
         tail = norm[j : min(end, j + LOOKAHEAD)]
         ins, dur = regimen(tail)
+        if k == 0 and not (ins and dur):  # "خدي مرتين في اليوم من البروفين": dose said before the first name
+            b_ins, b_dur = regimen(norm[max(0, i - 12) : i])
+            ins, dur = ins or b_ins, dur or b_dur
 
         def rank(sp, strength=strength):
             score, pk = sp
@@ -239,7 +253,7 @@ def extract(org, transcript: str) -> list[Extracted]:
         top = ranked[0][1]
         if top in by_drug:  # "اوجمنتين ... والاوجمنتين ده كمل عليه": fill what's missing, keep one line
             prev = by_drug[top]
-            prev.instructions = prev.instructions or ins
+            prev.instructions = _join([p for p in (prev.instructions, ins) if p])
             prev.duration = prev.duration or dur
             prev.text = f"{prev.text} … {said}"
             continue
